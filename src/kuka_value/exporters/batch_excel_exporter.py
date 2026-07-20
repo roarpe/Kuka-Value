@@ -15,7 +15,15 @@ from kuka_value.exporters.excel_exporter import (
 )
 from kuka_value.models.batch_result import BatchItemResult
 
-_SUMMARY_HEADERS = ["Backup Name", "Model", "Payloads", "Axis Loads", "Warnings", "Status"]
+_SUMMARY_HEADERS = [
+    "Backup Name",
+    "Model",
+    "Serial Number",
+    "Payloads",
+    "Axis Loads",
+    "Warnings",
+    "Status",
+]
 _BOLD = Font(bold=True)
 
 
@@ -54,10 +62,11 @@ class BatchExcelExporter(BatchExporter):
     @staticmethod
     def _summary_row(result: BatchItemResult) -> list[str | int]:
         if result.robot is None:
-            return [result.display_name, "-", 0, 0, 0, f"FAILED: {result.error}"]
+            return [result.display_name, "-", "-", 0, 0, 0, f"FAILED: {result.error}"]
         return [
             result.display_name,
             result.robot.model,
+            result.robot.controller.serial_number or "-",
             len(result.robot.payloads),
             len(result.robot.axis_loads),
             len(result.robot.warnings),

@@ -21,7 +21,7 @@ class TestRowsAndColumns:
 
     def test_column_count(self, qapp: object) -> None:
         model = BatchSummaryTableModel()
-        assert model.columnCount() == 5
+        assert model.columnCount() == 7
 
     def test_row_count_with_invalid_parent_index_is_zero(
         self, qapp: object, sample_batch_results: list[BatchItemResult]
@@ -44,7 +44,8 @@ class TestHeaderData:
     def test_horizontal_headers(self, qapp: object) -> None:
         model = BatchSummaryTableModel()
         assert model.headerData(0, Qt.Orientation.Horizontal) == "Backup Name"
-        assert model.headerData(4, Qt.Orientation.Horizontal) == "Status"
+        assert model.headerData(2, Qt.Orientation.Horizontal) == "Serial Number"
+        assert model.headerData(6, Qt.Orientation.Horizontal) == "Status"
 
 
 class TestCellData:
@@ -56,9 +57,20 @@ class TestCellData:
 
         assert model.data(model.index(0, 0)) == "TestBackup"
         assert model.data(model.index(0, 1)) == "KR 240 R2900"
-        assert model.data(model.index(0, 2)) == 2
-        assert model.data(model.index(0, 3)) == 1
-        assert model.data(model.index(0, 4)) == "OK"
+        assert model.data(model.index(0, 2)) == "12345"
+        assert model.data(model.index(0, 3)) == 2
+        assert model.data(model.index(0, 4)) == 0
+        assert model.data(model.index(0, 5)) == 1
+        assert model.data(model.index(0, 6)) == "OK"
+
+    def test_successful_row_without_serial_number_shows_dash(
+        self, qapp: object, sample_batch_results: list[BatchItemResult]
+    ) -> None:
+        model = BatchSummaryTableModel()
+        model.set_results(sample_batch_results)
+
+        # SecondBackup's ControllerInfo has no serial_number set
+        assert model.data(model.index(1, 2)) == "-"
 
     def test_failed_row_values(
         self, qapp: object, sample_batch_results: list[BatchItemResult]
@@ -68,9 +80,11 @@ class TestCellData:
 
         assert model.data(model.index(2, 0)) == "BrokenBackup"
         assert model.data(model.index(2, 1)) == "-"
-        assert model.data(model.index(2, 2)) == 0
+        assert model.data(model.index(2, 2)) == "-"
         assert model.data(model.index(2, 3)) == 0
-        assert "FAILED" in model.data(model.index(2, 4))
+        assert model.data(model.index(2, 4)) == 0
+        assert model.data(model.index(2, 5)) == 0
+        assert "FAILED" in model.data(model.index(2, 6))
 
     def test_data_returns_none_for_invalid_index(self, qapp: object) -> None:
         model = BatchSummaryTableModel()
@@ -84,7 +98,7 @@ class TestForegroundColor:
         model = BatchSummaryTableModel()
         model.set_results(sample_batch_results)
 
-        color = model.data(model.index(0, 4), Qt.ItemDataRole.ForegroundRole)
+        color = model.data(model.index(0, 6), Qt.ItemDataRole.ForegroundRole)
         assert color == QColor("darkGreen")
 
     def test_failure_status_is_red(
@@ -93,7 +107,7 @@ class TestForegroundColor:
         model = BatchSummaryTableModel()
         model.set_results(sample_batch_results)
 
-        color = model.data(model.index(2, 4), Qt.ItemDataRole.ForegroundRole)
+        color = model.data(model.index(2, 6), Qt.ItemDataRole.ForegroundRole)
         assert color == QColor("red")
 
     def test_other_columns_have_no_foreground_override(

@@ -29,7 +29,7 @@ def _section_rows(rows: list[list[str]], is_header: Callable[[list[str]], bool])
 
 
 def _summary_rows(rows: list[list[str]]) -> list[list[str]]:
-    return _section_rows(rows, lambda r: r[0] == "Backup Name" and len(r) == 6)
+    return _section_rows(rows, lambda r: r[0] == "Backup Name" and len(r) == 7)
 
 
 def _payload_rows(rows: list[list[str]]) -> list[list[str]]:
@@ -55,7 +55,7 @@ class TestBatchCsvExport:
     def test_summary_marks_success_as_ok(self, sample_batch_results: list[BatchItemResult]) -> None:
         rows = _rows(BatchCsvExporter().export(sample_batch_results))
         summary = _summary_rows(rows)
-        assert summary[0] == ["TestBackup", "KR 240 R2900", "2", "0", "1", "OK"]
+        assert summary[0] == ["TestBackup", "KR 240 R2900", "12345", "2", "0", "1", "OK"]
 
     def test_summary_marks_failure(self, sample_batch_results: list[BatchItemResult]) -> None:
         rows = _rows(BatchCsvExporter().export(sample_batch_results))
@@ -63,8 +63,9 @@ class TestBatchCsvExport:
         failed_row = summary[2]
         assert failed_row[0] == "BrokenBackup"
         assert failed_row[1] == "-"
-        assert "FAILED" in failed_row[5]
-        assert "Invalid ZIP file" in failed_row[5]
+        assert failed_row[2] == "-"
+        assert "FAILED" in failed_row[6]
+        assert "Invalid ZIP file" in failed_row[6]
 
     def test_payload_table_excludes_failed_backup(
         self, sample_batch_results: list[BatchItemResult]

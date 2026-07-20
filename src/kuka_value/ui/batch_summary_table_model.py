@@ -9,8 +9,16 @@ from PySide6.QtGui import QColor
 
 from kuka_value.models.batch_result import BatchItemResult
 
-_HEADERS = ["Backup Name", "Model", "Payloads", "Warnings", "Status"]
-_STATUS_COLUMN = 4
+_HEADERS = [
+    "Backup Name",
+    "Model",
+    "Serial Number",
+    "Payloads",
+    "Axis Loads",
+    "Warnings",
+    "Status",
+]
+_STATUS_COLUMN = 6
 
 
 class BatchSummaryTableModel(QAbstractTableModel):
@@ -86,16 +94,20 @@ class BatchSummaryTableModel(QAbstractTableModel):
             columns: dict[int, Any] = {
                 0: result.display_name,
                 1: "-",
-                2: 0,
+                2: "-",
                 3: 0,
-                4: f"FAILED: {result.error}",
+                4: 0,
+                5: 0,
+                6: f"FAILED: {result.error}",
             }
         else:
             columns = {
                 0: result.display_name,
                 1: result.robot.model,
-                2: len(result.robot.payloads),
-                3: len(result.robot.warnings),
-                4: "OK",
+                2: result.robot.controller.serial_number or "-",
+                3: len(result.robot.payloads),
+                4: len(result.robot.axis_loads),
+                5: len(result.robot.warnings),
+                6: "OK",
             }
         return columns.get(column)

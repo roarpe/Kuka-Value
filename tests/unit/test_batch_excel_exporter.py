@@ -42,7 +42,7 @@ class TestBatchExcelExport:
         sheet = workbook["Summary"]
 
         rows = list(sheet.iter_rows(min_row=2, values_only=True))
-        assert rows[0] == ("TestBackup", "KR 240 R2900", 2, 0, 1, "OK")
+        assert rows[0] == ("TestBackup", "KR 240 R2900", "12345", 2, 0, 1, "OK")
 
     def test_summary_marks_failure(self, sample_batch_results: list[BatchItemResult]) -> None:
         result = BatchExcelExporter().export(sample_batch_results)
@@ -53,7 +53,8 @@ class TestBatchExcelExport:
         failed_row = rows[2]
         assert failed_row[0] == "BrokenBackup"
         assert failed_row[1] == "-"
-        assert "FAILED" in failed_row[5]
+        assert failed_row[2] == "-"
+        assert "FAILED" in failed_row[6]
 
     def test_summary_header_is_bold(self, sample_batch_results: list[BatchItemResult]) -> None:
         result = BatchExcelExporter().export(sample_batch_results)
