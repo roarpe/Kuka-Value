@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QSplitter,
     QTableView,
+    QTabWidget,
     QToolBar,
     QVBoxLayout,
     QWidget,
@@ -31,6 +32,7 @@ from kuka_value.exporters.json_exporter import JsonExporter
 from kuka_value.models.robot_info import RobotInfo
 from kuka_value.models.warnings import WarningLevel
 from kuka_value.ui.analysis_worker import AnalysisWorker
+from kuka_value.ui.axis_load_table_model import AxisLoadTableModel
 from kuka_value.ui.batch_results_window import BatchResultsWindow
 from kuka_value.ui.payload_table_model import PayloadTableModel
 
@@ -65,6 +67,7 @@ class MainWindow(QMainWindow):
         self._thread: QThread | None = None
         self._worker: AnalysisWorker | None = None
         self._payload_model = PayloadTableModel(self)
+        self._axis_load_model = AxisLoadTableModel(self)
         self._batch_windows: list[BatchResultsWindow] = []
 
         self._build_ui()
@@ -118,7 +121,7 @@ class MainWindow(QMainWindow):
     def _build_top_splitter(self) -> QWidget:
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(self._build_info_panel())
-        splitter.addWidget(self._build_payload_table())
+        splitter.addWidget(self._build_load_data_tabs())
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 3)
         return splitter
@@ -133,6 +136,7 @@ class MainWindow(QMainWindow):
         self.label_controller = QLabel("-")
         self.label_serial = QLabel("-")
         self.label_payload_count = QLabel("-")
+        self.label_axis_load_count = QLabel("-")
 
         form.addRow("Model:", self.label_model)
         form.addRow("Backup Name:", self.label_backup_name)
@@ -140,8 +144,15 @@ class MainWindow(QMainWindow):
         form.addRow("Controller:", self.label_controller)
         form.addRow("Serial Number:", self.label_serial)
         form.addRow("Unique Payloads:", self.label_payload_count)
+        form.addRow("Axis Loads:", self.label_axis_load_count)
 
         return group
+
+    def _build_load_data_tabs(self) -> QWidget:
+        tabs = QTabWidget()
+        tabs.addTab(self._build_payload_table(), "Payloads")
+        tabs.addTab(self._build_axis_load_table(), "Axis Loads")
+        return tabs
 
     def _build_payload_table(self) -> QWidget:
         self.table_view = QTableView()
@@ -150,6 +161,14 @@ class MainWindow(QMainWindow):
         self.table_view.setEditTriggers(QTableView.EditTrigger.NoEditTriggers)
         self.table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         return self.table_view
+
+    def _build_axis_load_table(self) -> QWidget:
+        self.axis_load_table_view = QTableView()
+        self.axis_load_table_view.setModel(self._axis_load_model)
+        self.axis_load_table_view.horizontalHeader().setStretchLastSection(True)
+        self.axis_load_table_view.setEditTriggers(QTableView.EditTrigger.NoEditTriggers)
+        self.axis_load_table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
+        return self.axis_load_table_view
 
     def _build_warnings_panel(self) -> QWidget:
         group = QGroupBox("Warnings")
@@ -233,6 +252,8 @@ class MainWindow(QMainWindow):
         self._current_robot = robot
         self._payload_model.set_payloads(robot.payloads)
         self.table_view.resizeColumnsToContents()
+        self._axis_load_model.set_axis_loads(robot.axis_loads)
+        self.axis_load_table_view.resizeColumnsToContents()
         self._update_info_panel(robot)
         self._update_warnings_panel(robot)
         self.statusBar().showMessage(f"Loaded: {robot.general.backup_name}")
@@ -252,6 +273,7 @@ class MainWindow(QMainWindow):
         self.label_controller.setText(robot.controller.controller_type.value)
         self.label_serial.setText(robot.controller.serial_number or "-")
         self.label_payload_count.setText(str(len(robot.payloads)))
+        self.label_axis_load_count.setText(str(len(robot.axis_loads)))
 
     def _update_warnings_panel(self, robot: RobotInfo) -> None:
         self.warnings_list.clear()

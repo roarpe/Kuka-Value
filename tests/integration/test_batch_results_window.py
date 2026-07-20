@@ -135,6 +135,26 @@ class TestSelection:
 
         assert window._payload_model.rowCount() == 1
 
+    def test_clicking_summary_row_populates_axis_load_table(
+        self, engine: Engine, temp_dir: Path, qtbot: object
+    ) -> None:
+        backup = temp_dir / "Robot1"
+        backup.mkdir()
+        (backup / "$machine.dat").write_text('$TRAFONAME[]="KR240R2900"\n')
+        (backup / "$config.dat").write_text(
+            "DECL LOAD LOAD_A3_DATA={M 12.5,"
+            "CM {X 50.0,Y 0.0,Z 0.0,A 0.0,B 0.0,C 0.0},"
+            "J {X 0.0,Y 0.0,Z 0.0}}\n"
+        )
+
+        window = BatchResultsWindow(engine, [backup])
+        qtbot.addWidget(window)  # type: ignore[attr-defined]
+        _wait_for_batch_done(window, qtbot)
+
+        window._on_summary_row_clicked(window._summary_model.index(0, 0))
+
+        assert window._axis_load_model.rowCount() == 1
+
     def test_clicking_failed_row_shows_empty_payload_table(
         self, engine: Engine, temp_dir: Path, qtbot: object
     ) -> None:
@@ -147,6 +167,7 @@ class TestSelection:
         window._on_summary_row_clicked(window._summary_model.index(0, 0))
 
         assert window._payload_model.rowCount() == 0
+        assert window._axis_load_model.rowCount() == 0
 
 
 class TestExport:

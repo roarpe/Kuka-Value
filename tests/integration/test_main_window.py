@@ -17,8 +17,10 @@ from PySide6.QtGui import QColor
 from kuka_value.exporters.csv_exporter import CsvExporter
 from kuka_value.exporters.excel_exporter import ExcelExporter
 from kuka_value.exporters.json_exporter import JsonExporter
+from kuka_value.models.axis_load import AxisLoad
 from kuka_value.models.controller_info import ControllerInfo, ControllerType
 from kuka_value.models.general_info import GeneralInfo
+from kuka_value.models.payload import Vector3D
 from kuka_value.models.robot_info import RobotInfo
 from kuka_value.models.warnings import WarningLog
 from kuka_value.ui.main_window import MainWindow
@@ -67,12 +69,29 @@ class TestAnalysisFinished:
         assert main_window.label_controller.text() == "KRC4"
         assert main_window.label_serial.text() == "12345"
         assert main_window.label_payload_count.text() == "2"
+        assert main_window.label_axis_load_count.text() == "0"
 
     def test_populates_payload_table(
         self, main_window: MainWindow, sample_robot_info: RobotInfo
     ) -> None:
         main_window._on_analysis_finished(sample_robot_info)
         assert main_window._payload_model.rowCount() == 2
+
+    def test_populates_axis_load_table(self, main_window: MainWindow) -> None:
+        robot = RobotInfo(
+            model="KR 240 R2900",
+            general=GeneralInfo(backup_name="Test"),
+            controller=ControllerInfo(controller_type=ControllerType.UNKNOWN),
+            axis_loads=[
+                AxisLoad(axis=3, mass=12.5, center_of_gravity=Vector3D(x=0.0, y=0.0, z=0.0))
+            ],
+            warnings=WarningLog(),
+        )
+
+        main_window._on_analysis_finished(robot)
+
+        assert main_window._axis_load_model.rowCount() == 1
+        assert main_window.label_axis_load_count.text() == "1"
 
     def test_populates_warnings_panel(
         self, main_window: MainWindow, sample_robot_info: RobotInfo

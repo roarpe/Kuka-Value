@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QSplitter,
     QTableView,
+    QTabWidget,
     QToolBar,
     QVBoxLayout,
     QWidget,
@@ -26,6 +27,7 @@ from kuka_value.exporters.batch_csv_exporter import BatchCsvExporter
 from kuka_value.exporters.batch_excel_exporter import BatchExcelExporter
 from kuka_value.exporters.batch_json_exporter import BatchJsonExporter
 from kuka_value.models.batch_result import BatchItemResult
+from kuka_value.ui.axis_load_table_model import AxisLoadTableModel
 from kuka_value.ui.batch_analysis_worker import BatchAnalysisWorker
 from kuka_value.ui.batch_summary_table_model import BatchSummaryTableModel
 from kuka_value.ui.payload_table_model import PayloadTableModel
@@ -53,6 +55,7 @@ class BatchResultsWindow(QMainWindow):
 
         self._summary_model = BatchSummaryTableModel(self)
         self._payload_model = PayloadTableModel(self)
+        self._axis_load_model = AxisLoadTableModel(self)
 
         self._build_ui()
         self._start_batch()
@@ -92,7 +95,7 @@ class BatchResultsWindow(QMainWindow):
 
         splitter = QSplitter(Qt.Orientation.Vertical)
         splitter.addWidget(self._build_summary_table())
-        splitter.addWidget(self._build_payload_panel())
+        splitter.addWidget(self._build_load_data_panel())
         splitter.setStretchFactor(0, 2)
         splitter.setStretchFactor(1, 3)
         layout.addWidget(splitter)
@@ -108,14 +111,28 @@ class BatchResultsWindow(QMainWindow):
         self.summary_table.clicked.connect(self._on_summary_row_clicked)
         return self.summary_table
 
-    def _build_payload_panel(self) -> QWidget:
-        group = QGroupBox("Payloads (selected backup)")
+    def _build_load_data_panel(self) -> QWidget:
+        group = QGroupBox("Selected backup")
         layout = QVBoxLayout(group)
+
+        tabs = QTabWidget()
+        tabs.addTab(self._build_payload_table(), "Payloads")
+        tabs.addTab(self._build_axis_load_table(), "Axis Loads")
+        layout.addWidget(tabs)
+
+        return group
+
+    def _build_payload_table(self) -> QWidget:
         self.payload_table = QTableView()
         self.payload_table.setModel(self._payload_model)
         self.payload_table.setEditTriggers(QTableView.EditTrigger.NoEditTriggers)
-        layout.addWidget(self.payload_table)
-        return group
+        return self.payload_table
+
+    def _build_axis_load_table(self) -> QWidget:
+        self.axis_load_table = QTableView()
+        self.axis_load_table.setModel(self._axis_load_model)
+        self.axis_load_table.setEditTriggers(QTableView.EditTrigger.NoEditTriggers)
+        return self.axis_load_table
 
     # -- Batch execution --------------------------------------------------
 
@@ -169,8 +186,12 @@ class BatchResultsWindow(QMainWindow):
     def _on_summary_row_clicked(self, index: QModelIndex | QPersistentModelIndex) -> None:
         result = self._summary_model.result_at(index.row())
         payloads = result.robot.payloads if result.robot is not None else []
+        axis_loads = result.robot.axis_loads if result.robot is not None else []
+
         self._payload_model.set_payloads(payloads)
         self.payload_table.resizeColumnsToContents()
+        self._axis_load_model.set_axis_loads(axis_loads)
+        self.axis_load_table.resizeColumnsToContents()
 
     # -- Export --------------------------------------------------------------
 
