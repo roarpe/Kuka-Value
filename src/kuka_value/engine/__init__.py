@@ -1,3 +1,5 @@
 """Engine module: Core orchestration for backup analysis."""
 
-__all__ = []
+from kuka_value.engine.engine import Engine
+
+__all__ = ["Engine"]
