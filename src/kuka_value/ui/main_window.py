@@ -31,7 +31,21 @@ from kuka_value.exporters.json_exporter import JsonExporter
 from kuka_value.models.robot_info import RobotInfo
 from kuka_value.models.warnings import WarningLevel
 from kuka_value.ui.analysis_worker import AnalysisWorker
+from kuka_value.ui.batch_results_window import BatchResultsWindow
 from kuka_value.ui.payload_table_model import PayloadTableModel
+
+
+def discover_batch_paths(folder: Path) -> list[Path]:
+    """Find backups directly inside a folder selected for batch analysis.
+
+    Each immediate child that is a .zip file or a subdirectory counts
+    as one backup (a folder-based backup's own internal subdirectories
+    are not treated as separate backups - only the folder the user
+    selected is scanned, non-recursively).
+    """
+    return sorted(
+        child for child in folder.iterdir() if child.is_dir() or child.suffix.lower() == ".zip"
+    )
 
 
 class MainWindow(QMainWindow):
@@ -51,6 +65,7 @@ class MainWindow(QMainWindow):
         self._thread: QThread | None = None
         self._worker: AnalysisWorker | None = None
         self._payload_model = PayloadTableModel(self)
+        self._batch_windows: list[BatchResultsWindow] = []
 
         self._build_ui()
         self._set_robot_loaded(False)
@@ -73,8 +88,12 @@ class MainWindow(QMainWindow):
 
         self.action_open_zip = self._make_action("Open ZIP...", self._on_open_zip)
         self.action_open_folder = self._make_action("Open Folder...", self._on_open_folder)
+        self.action_batch_analyze = self._make_action(
+            "Batch Analyze Folder...", self._on_batch_analyze_folder
+        )
         toolbar.addAction(self.action_open_zip)
         toolbar.addAction(self.action_open_folder)
+        toolbar.addAction(self.action_batch_analyze)
         toolbar.addSeparator()
 
         self.action_export_csv = self._make_action("Export CSV...", self._on_export_csv)
@@ -149,6 +168,26 @@ class MainWindow(QMainWindow):
         if path_str:
             self._start_analysis(Path(path_str))
 
+    def _on_batch_analyze_folder(self) -> None:
+        folder_str = QFileDialog.getExistingDirectory(
+            self, "Select Folder Containing Multiple Backups"
+        )
+        if not folder_str:
+            return
+
+        paths = discover_batch_paths(Path(folder_str))
+        if not paths:
+            QMessageBox.information(
+                self,
+                "No Backups Found",
+                "No .zip files or subfolders were found directly inside the selected folder.",
+            )
+            return
+
+        batch_window = BatchResultsWindow(self._engine, paths, parent=self)
+        self._batch_windows.append(batch_window)
+        batch_window.show()
+
     def _start_analysis(self, path: Path) -> None:
         self.statusBar().showMessage(f"Analyzing {path.name}...")
         self._set_actions_enabled(False)
@@ -222,6 +261,7 @@ class MainWindow(QMainWindow):
     def _set_actions_enabled(self, enabled: bool) -> None:
         self.action_open_zip.setEnabled(enabled)
         self.action_open_folder.setEnabled(enabled)
+        self.action_batch_analyze.setEnabled(enabled)
 
     # -- Export --------------------------------------------------------------
 
