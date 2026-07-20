@@ -88,11 +88,15 @@ class MainWindow(QMainWindow):
 
         self.action_open_zip = self._make_action("Open ZIP...", self._on_open_zip)
         self.action_open_folder = self._make_action("Open Folder...", self._on_open_folder)
+        self.action_batch_select_zips = self._make_action(
+            "Select Multiple ZIPs...", self._on_batch_select_zips
+        )
         self.action_batch_analyze = self._make_action(
             "Batch Analyze Folder...", self._on_batch_analyze_folder
         )
         toolbar.addAction(self.action_open_zip)
         toolbar.addAction(self.action_open_folder)
+        toolbar.addAction(self.action_batch_select_zips)
         toolbar.addAction(self.action_batch_analyze)
         toolbar.addSeparator()
 
@@ -168,6 +172,15 @@ class MainWindow(QMainWindow):
         if path_str:
             self._start_analysis(Path(path_str))
 
+    def _on_batch_select_zips(self) -> None:
+        path_strs, _ = QFileDialog.getOpenFileNames(
+            self, "Select Multiple KUKA Backups", "", "ZIP Archives (*.zip)"
+        )
+        if not path_strs:
+            return
+
+        self._open_batch_window([Path(p) for p in path_strs])
+
     def _on_batch_analyze_folder(self) -> None:
         folder_str = QFileDialog.getExistingDirectory(
             self, "Select Folder Containing Multiple Backups"
@@ -184,6 +197,9 @@ class MainWindow(QMainWindow):
             )
             return
 
+        self._open_batch_window(paths)
+
+    def _open_batch_window(self, paths: list[Path]) -> None:
         batch_window = BatchResultsWindow(self._engine, paths, parent=self)
         self._batch_windows.append(batch_window)
         batch_window.show()
@@ -261,6 +277,7 @@ class MainWindow(QMainWindow):
     def _set_actions_enabled(self, enabled: bool) -> None:
         self.action_open_zip.setEnabled(enabled)
         self.action_open_folder.setEnabled(enabled)
+        self.action_batch_select_zips.setEnabled(enabled)
         self.action_batch_analyze.setEnabled(enabled)
 
     # -- Export --------------------------------------------------------------

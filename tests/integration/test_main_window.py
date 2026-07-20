@@ -373,6 +373,68 @@ class TestFullOpenFlow:
         assert main_window._current_robot is None
 
 
+class TestBatchSelectZips:
+    def test_opens_batch_window_for_selected_zips(
+        self,
+        main_window: MainWindow,
+        temp_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        qtbot: object,
+    ) -> None:
+        zip1 = temp_dir / "Robot1.zip"
+        zip1.write_bytes(b"fake zip 1")
+        zip2 = temp_dir / "Robot2.zip"
+        zip2.write_bytes(b"fake zip 2")
+
+        monkeypatch.setattr(
+            "kuka_value.ui.main_window.QFileDialog.getOpenFileNames",
+            lambda *_args: ([str(zip1), str(zip2)], "ZIP Archives (*.zip)"),
+        )
+
+        main_window._on_batch_select_zips()
+
+        assert len(main_window._batch_windows) == 1
+        assert main_window._batch_windows[0]._paths == [zip1, zip2]
+
+        batch_window = main_window._batch_windows[0]
+        qtbot.waitUntil(lambda: batch_window._thread is None, timeout=5000)  # type: ignore[attr-defined]
+
+    def test_cancelled_dialog_opens_no_window(
+        self, main_window: MainWindow, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            "kuka_value.ui.main_window.QFileDialog.getOpenFileNames",
+            lambda *_args: ([], ""),
+        )
+
+        main_window._on_batch_select_zips()
+
+        assert main_window._batch_windows == []
+
+    def test_single_selection_still_opens_batch_window(
+        self,
+        main_window: MainWindow,
+        temp_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        qtbot: object,
+    ) -> None:
+        zip1 = temp_dir / "Robot1.zip"
+        zip1.write_bytes(b"fake zip")
+
+        monkeypatch.setattr(
+            "kuka_value.ui.main_window.QFileDialog.getOpenFileNames",
+            lambda *_args: ([str(zip1)], "ZIP Archives (*.zip)"),
+        )
+
+        main_window._on_batch_select_zips()
+
+        assert len(main_window._batch_windows) == 1
+        assert main_window._batch_windows[0]._paths == [zip1]
+
+        batch_window = main_window._batch_windows[0]
+        qtbot.waitUntil(lambda: batch_window._thread is None, timeout=5000)  # type: ignore[attr-defined]
+
+
 class TestBatchAnalyzeFolder:
     def test_opens_batch_window_for_discovered_backups(
         self,
