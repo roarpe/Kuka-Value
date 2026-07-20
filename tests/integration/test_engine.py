@@ -77,6 +77,24 @@ class TestFullPipeline:
         assert len(robot.payloads) == 1
         assert sorted(robot.payloads[0].indices) == [1, 5]
 
+    def test_parse_extracts_axis_loads_alongside_payloads(
+        self, temp_dir: Path, engine: Engine
+    ) -> None:
+        backup = temp_dir / "backup"
+        backup.mkdir()
+        (backup / "$machine.dat").write_text('$TRAFONAME[]="KR240R2900"\n')
+        (backup / "$config.dat").write_text(
+            "DECL LOAD LOAD_A3_DATA={M 15.0,"
+            "CM {X 10.0,Y 0.0,Z 0.0,A 0.0,B 0.0,C 0.0},"
+            "J {X 0.0,Y 0.0,Z 0.0}}\n"
+        )
+
+        robot = engine.parse(backup)
+
+        assert len(robot.axis_loads) == 1
+        assert robot.axis_loads[0].axis == 3
+        assert robot.axis_loads[0].mass == 15.0
+
     def test_parse_empty_backup_returns_unknown_with_warning(
         self, temp_dir: Path, engine: Engine
     ) -> None:

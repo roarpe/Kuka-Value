@@ -1,5 +1,6 @@
 """Analyzers module: Robot and payload analysis."""
 
+from kuka_value.analyzers.axis_load_analyzer import AxisLoadAnalyzer
 from kuka_value.analyzers.controller_analyzer import ControllerAnalyzer
 from kuka_value.analyzers.payload_analyzer import PayloadAnalyzer
 from kuka_value.analyzers.robot_analyzer import (
@@ -10,6 +11,7 @@ from kuka_value.analyzers.robot_analyzer import (
 from kuka_value.analyzers.robot_info_xml import RobotInfoXmlData, find_robot_info_xml
 
 __all__ = [
+    "AxisLoadAnalyzer",
     "ControllerAnalyzer",
     "ModelDetectionResult",
     "ModelSource",

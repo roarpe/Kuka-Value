@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 
+from kuka_value.models.axis_load import AxisLoad
 from kuka_value.models.controller_info import ControllerInfo
 from kuka_value.models.general_info import GeneralInfo
 from kuka_value.models.payload import Payload
@@ -16,4 +17,5 @@ class RobotInfo:
     general: GeneralInfo
     controller: ControllerInfo
     payloads: list[Payload] = field(default_factory=list)
+    axis_loads: list[AxisLoad] = field(default_factory=list)
     warnings: WarningLog = field(default_factory=WarningLog)

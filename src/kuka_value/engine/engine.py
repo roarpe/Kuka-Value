@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
+from kuka_value.analyzers.axis_load_analyzer import AxisLoadAnalyzer
 from kuka_value.analyzers.controller_analyzer import ControllerAnalyzer
 from kuka_value.analyzers.payload_analyzer import PayloadAnalyzer
 from kuka_value.analyzers.robot_analyzer import RobotAnalyzer
@@ -29,6 +30,7 @@ class Engine:
     def __init__(self) -> None:
         self._robot_analyzer = RobotAnalyzer()
         self._payload_analyzer = PayloadAnalyzer()
+        self._axis_load_analyzer = AxisLoadAnalyzer()
         self._controller_analyzer = ControllerAnalyzer()
 
     def parse(self, path: Path) -> RobotInfo:
@@ -79,6 +81,7 @@ class Engine:
 
         model_result = self._robot_analyzer.analyze(reader, warnings)
         payloads = self._payload_analyzer.analyze(reader, warnings)
+        axis_loads = self._axis_load_analyzer.analyze(reader, warnings)
         serial_number = self._controller_analyzer.detect_serial_number(reader)
 
         general = GeneralInfo(backup_name=self._backup_name(source_path))
@@ -91,6 +94,7 @@ class Engine:
             general=general,
             controller=controller,
             payloads=payloads,
+            axis_loads=axis_loads,
             warnings=warnings,
         )
 
