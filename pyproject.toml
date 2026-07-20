@@ -95,6 +95,7 @@ select = [
 ignore = [
     "E501",  # line too long (handled by black)
     "W191",  # indentation contains tabs
+    "C901",  # function complexity (lexer dispatch is inherently branchy)
 ]
 exclude = [
     ".git",
