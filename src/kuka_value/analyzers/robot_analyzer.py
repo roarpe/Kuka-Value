@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import logging
 import re
 from dataclasses import dataclass
 from enum import Enum
 
+from kuka_value.analyzers._common import read_file_safe
 from kuka_value.models.warnings import WarningLog
 from kuka_value.parser.backup_reader import BackupReader, FileInfo
 from kuka_value.parser.krl_parser import KrlValue, parse_assignments
-
-logger = logging.getLogger(__name__)
 
 # Files larger than this are skipped during the broad (priority 4) fallback
 # scan, to avoid wasting time decoding large binary artifacts.
@@ -132,7 +130,7 @@ class RobotAnalyzer:
             if size_limited and file_info.size > _MAX_FALLBACK_FILE_SIZE:
                 continue
 
-            content = self._read_safe(file_info)
+            content = read_file_safe(file_info)
             if content is None:
                 continue
 
@@ -141,17 +139,6 @@ class RobotAnalyzer:
                 return value
 
         return None
-
-    @staticmethod
-    def _read_safe(file_info: FileInfo) -> str | None:
-        """Read file content, returning None on any I/O error."""
-        if file_info.absolute_path is None or not file_info.absolute_path.exists():
-            return None
-        try:
-            return file_info.absolute_path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            logger.debug("Could not read file: %s", file_info.path)
-            return None
 
     @staticmethod
     def _extract_variable(content: str, var_names: frozenset[str]) -> str | None:
