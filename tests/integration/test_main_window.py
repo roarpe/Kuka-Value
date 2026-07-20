@@ -5,18 +5,22 @@ Blocking modal dialogs (QMessageBox, QFileDialog) are monkeypatched so
 tests never hang waiting for a real user.
 """
 
+import io
 import tempfile
 from pathlib import Path
 from zipfile import ZipFile
 
 import pytest
+from openpyxl import load_workbook
 from PySide6.QtGui import QColor
 
 from kuka_value.exporters.csv_exporter import CsvExporter
 from kuka_value.exporters.excel_exporter import ExcelExporter
 from kuka_value.exporters.json_exporter import JsonExporter
+from kuka_value.models.axis_load import AxisLoad
 from kuka_value.models.controller_info import ControllerInfo, ControllerType
 from kuka_value.models.general_info import GeneralInfo
+from kuka_value.models.payload import Vector3D
 from kuka_value.models.robot_info import RobotInfo
 from kuka_value.models.warnings import WarningLog
 from kuka_value.ui.main_window import MainWindow
@@ -65,12 +69,29 @@ class TestAnalysisFinished:
         assert main_window.label_controller.text() == "KRC4"
         assert main_window.label_serial.text() == "12345"
         assert main_window.label_payload_count.text() == "2"
+        assert main_window.label_axis_load_count.text() == "0"
 
     def test_populates_payload_table(
         self, main_window: MainWindow, sample_robot_info: RobotInfo
     ) -> None:
         main_window._on_analysis_finished(sample_robot_info)
         assert main_window._payload_model.rowCount() == 2
+
+    def test_populates_axis_load_table(self, main_window: MainWindow) -> None:
+        robot = RobotInfo(
+            model="KR 240 R2900",
+            general=GeneralInfo(backup_name="Test"),
+            controller=ControllerInfo(controller_type=ControllerType.UNKNOWN),
+            axis_loads=[
+                AxisLoad(axis=3, mass=12.5, center_of_gravity=Vector3D(x=0.0, y=0.0, z=0.0))
+            ],
+            warnings=WarningLog(),
+        )
+
+        main_window._on_analysis_finished(robot)
+
+        assert main_window._axis_load_model.rowCount() == 1
+        assert main_window.label_axis_load_count.text() == "1"
 
     def test_populates_warnings_panel(
         self, main_window: MainWindow, sample_robot_info: RobotInfo
@@ -198,7 +219,17 @@ class TestExport:
         main_window._on_export_excel()
 
         assert target.exists()
-        assert target.read_bytes() == ExcelExporter().export(sample_robot_info)
+        # Not a raw-bytes comparison: openpyxl embeds a save timestamp
+        # in docProps/core.xml, so two independently generated .xlsx
+        # files for identical data are never byte-identical. Compare
+        # actual sheet content instead.
+        written = load_workbook(target)
+        expected = load_workbook(io.BytesIO(ExcelExporter().export(sample_robot_info)))
+        assert written.sheetnames == expected.sheetnames
+        for sheet_name in written.sheetnames:
+            written_rows = list(written[sheet_name].iter_rows(values_only=True))
+            expected_rows = list(expected[sheet_name].iter_rows(values_only=True))
+            assert written_rows == expected_rows
 
     def test_export_json_writes_expected_content(
         self,
@@ -359,4 +390,130 @@ class TestFullOpenFlow:
         main_window._on_open_folder()
 
         assert main_window._current_robot is None
+
+
+class TestBatchSelectZips:
+    def test_opens_batch_window_for_selected_zips(
+        self,
+        main_window: MainWindow,
+        temp_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        qtbot: object,
+    ) -> None:
+        zip1 = temp_dir / "Robot1.zip"
+        zip1.write_bytes(b"fake zip 1")
+        zip2 = temp_dir / "Robot2.zip"
+        zip2.write_bytes(b"fake zip 2")
+
+        monkeypatch.setattr(
+            "kuka_value.ui.main_window.QFileDialog.getOpenFileNames",
+            lambda *_args: ([str(zip1), str(zip2)], "ZIP Archives (*.zip)"),
+        )
+
+        main_window._on_batch_select_zips()
+
+        assert len(main_window._batch_windows) == 1
+        assert main_window._batch_windows[0]._paths == [zip1, zip2]
+
+        batch_window = main_window._batch_windows[0]
+        qtbot.waitUntil(lambda: batch_window._thread is None, timeout=5000)  # type: ignore[attr-defined]
+
+    def test_cancelled_dialog_opens_no_window(
+        self, main_window: MainWindow, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            "kuka_value.ui.main_window.QFileDialog.getOpenFileNames",
+            lambda *_args: ([], ""),
+        )
+
+        main_window._on_batch_select_zips()
+
+        assert main_window._batch_windows == []
+
+    def test_single_selection_still_opens_batch_window(
+        self,
+        main_window: MainWindow,
+        temp_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        qtbot: object,
+    ) -> None:
+        zip1 = temp_dir / "Robot1.zip"
+        zip1.write_bytes(b"fake zip")
+
+        monkeypatch.setattr(
+            "kuka_value.ui.main_window.QFileDialog.getOpenFileNames",
+            lambda *_args: ([str(zip1)], "ZIP Archives (*.zip)"),
+        )
+
+        main_window._on_batch_select_zips()
+
+        assert len(main_window._batch_windows) == 1
+        assert main_window._batch_windows[0]._paths == [zip1]
+
+        batch_window = main_window._batch_windows[0]
+        qtbot.waitUntil(lambda: batch_window._thread is None, timeout=5000)  # type: ignore[attr-defined]
+
+
+class TestBatchAnalyzeFolder:
+    def test_opens_batch_window_for_discovered_backups(
+        self,
+        main_window: MainWindow,
+        temp_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        qtbot: object,
+    ) -> None:
+        (temp_dir / "Robot1").mkdir()
+        (temp_dir / "Robot1" / "$machine.dat").write_text('$TRAFONAME[]="KR240R2900"\n')
+        (temp_dir / "Robot2").mkdir()
+        (temp_dir / "Robot2" / "$machine.dat").write_text('$TRAFONAME[]="KR6R900"\n')
+
+        monkeypatch.setattr(
+            "kuka_value.ui.main_window.QFileDialog.getExistingDirectory",
+            lambda *_args: str(temp_dir),
+        )
+
+        main_window._on_batch_analyze_folder()
+
+        assert len(main_window._batch_windows) == 1
+        assert len(main_window._batch_windows[0]._paths) == 2
+
+        # Let the batch window's background thread finish before the
+        # test ends, so Qt doesn't warn about a thread still running
+        # when its objects get torn down.
+        batch_window = main_window._batch_windows[0]
+        qtbot.waitUntil(lambda: batch_window._thread is None, timeout=5000)  # type: ignore[attr-defined]
+
+    def test_cancelled_dialog_opens_no_window(
+        self, main_window: MainWindow, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            "kuka_value.ui.main_window.QFileDialog.getExistingDirectory",
+            lambda *_args: "",
+        )
+
+        main_window._on_batch_analyze_folder()
+
+        assert main_window._batch_windows == []
+
+    def test_empty_folder_shows_info_message_and_opens_no_window(
+        self,
+        main_window: MainWindow,
+        temp_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(
+            "kuka_value.ui.main_window.QFileDialog.getExistingDirectory",
+            lambda *_args: str(temp_dir),
+        )
+
+        shown = []
+        monkeypatch.setattr(
+            "kuka_value.ui.main_window.QMessageBox.information",
+            lambda *args: shown.append(args[-1]),
+        )
+
+        main_window._on_batch_analyze_folder()
+
+        assert main_window._batch_windows == []
+        assert len(shown) == 1
         assert main_window._thread is None

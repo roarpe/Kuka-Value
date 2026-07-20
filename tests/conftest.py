@@ -10,6 +10,7 @@ if str(src_path) not in sys.path:
 
 import pytest  # noqa: E402
 
+from kuka_value.models.batch_result import BatchItemResult  # noqa: E402
 from kuka_value.models.controller_info import ControllerInfo, ControllerType  # noqa: E402
 from kuka_value.models.general_info import GeneralInfo  # noqa: E402
 from kuka_value.models.payload import Payload, Vector3D  # noqa: E402
@@ -49,3 +50,31 @@ def sample_robot_info() -> RobotInfo:
         payloads=payloads,
         warnings=warnings,
     )
+
+
+@pytest.fixture
+def sample_batch_results(sample_robot_info: RobotInfo) -> list[BatchItemResult]:
+    """Two successful backups (the second with a distinct payload) plus
+    one failure - covers the mixed-outcome case batch exporters must
+    handle without dropping or mislabeling the failed item."""
+    second_robot = RobotInfo(
+        model="KR 6 R900",
+        general=GeneralInfo(backup_name="SecondBackup", kss_version=None),
+        controller=ControllerInfo(controller_type=ControllerType.UNKNOWN),
+        payloads=[
+            Payload(
+                mass=5.0,
+                center_of_gravity=Vector3D(x=10.0, y=10.0, z=10.0),
+                inertia=None,
+                indices=[1],
+                source_file="$config.dat",
+            ),
+        ],
+        warnings=WarningLog(),
+    )
+
+    return [
+        BatchItemResult(source_path=Path("TestBackup"), robot=sample_robot_info, error=None),
+        BatchItemResult(source_path=Path("SecondBackup"), robot=second_robot, error=None),
+        BatchItemResult(source_path=Path("BrokenBackup.zip"), robot=None, error="Invalid ZIP file"),
+    ]

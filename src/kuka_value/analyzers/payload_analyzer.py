@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from kuka_value.analyzers._common import read_file_safe
+from kuka_value.analyzers._common import extract_vector3d, read_file_safe
 from kuka_value.models.payload import Payload, Vector3D
 from kuka_value.models.warnings import WarningLog
 from kuka_value.parser.backup_reader import BackupReader, FileInfo
@@ -92,30 +92,17 @@ class PayloadAnalyzer:
 
     @staticmethod
     def _extract_center_of_gravity(struct: KrlStruct, warnings: WarningLog) -> Vector3D:
-        cm = struct.get_struct("CM")
+        cm = extract_vector3d(struct, "CM")
         if cm is None:
             warnings.warn(
                 "Payload incompleto: falta CM (centro de gravedad)", source="PayloadAnalyzer"
             )
             return Vector3D.zero()
-
-        return Vector3D(
-            x=cm.get_float("X") or 0.0,
-            y=cm.get_float("Y") or 0.0,
-            z=cm.get_float("Z") or 0.0,
-        )
+        return cm
 
     @staticmethod
     def _extract_inertia(struct: KrlStruct) -> Vector3D | None:
-        j = struct.get_struct("J")
-        if j is None:
-            return None
-
-        return Vector3D(
-            x=j.get_float("X") or 0.0,
-            y=j.get_float("Y") or 0.0,
-            z=j.get_float("Z") or 0.0,
-        )
+        return extract_vector3d(struct, "J")
 
     @staticmethod
     def _deduplicate(payloads: list[Payload]) -> list[Payload]:
