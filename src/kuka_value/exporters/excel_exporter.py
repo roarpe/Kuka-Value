@@ -11,7 +11,7 @@ from kuka_value.exporters.base import Exporter
 from kuka_value.models.payload import Payload
 from kuka_value.models.robot_info import RobotInfo
 
-_PAYLOAD_HEADERS = [
+PAYLOAD_HEADERS = [
     "Index(es)",
     "Mass (kg)",
     "CoG X (mm)",
@@ -66,15 +66,15 @@ class ExcelExporter(Exporter):
     @staticmethod
     def _write_payloads_sheet(workbook: Workbook, robot: RobotInfo) -> None:
         sheet = workbook.create_sheet("Payloads")
-        sheet.append(_PAYLOAD_HEADERS)
+        sheet.append(PAYLOAD_HEADERS)
         for cell in sheet[1]:
             cell.font = _BOLD
 
         for payload in robot.payloads:
-            sheet.append(ExcelExporter._payload_row(payload))
+            sheet.append(ExcelExporter.payload_row(payload))
 
     @staticmethod
-    def _payload_row(payload: Payload) -> list[str | float | None]:
+    def payload_row(payload: Payload) -> list[str | float | None]:
         inertia = payload.inertia
         return [
             ", ".join(str(i) for i in payload.indices),

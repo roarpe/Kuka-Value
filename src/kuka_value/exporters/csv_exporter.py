@@ -9,7 +9,7 @@ from kuka_value.exporters.base import Exporter
 from kuka_value.models.payload import Payload
 from kuka_value.models.robot_info import RobotInfo
 
-_PAYLOAD_HEADERS = [
+PAYLOAD_HEADERS = [
     "Index(es)",
     "Mass (kg)",
     "CoG X (mm)",
@@ -42,15 +42,15 @@ class CsvExporter(Exporter):
         writer.writerow(["Warnings", len(robot.warnings)])
         writer.writerow([])
 
-        writer.writerow(_PAYLOAD_HEADERS)
+        writer.writerow(PAYLOAD_HEADERS)
         for payload in robot.payloads:
-            writer.writerow(self._payload_row(payload))
+            writer.writerow(self.payload_row(payload))
 
         # utf-8-sig: BOM so Excel opens non-ASCII content correctly
         return buffer.getvalue().encode("utf-8-sig")
 
     @staticmethod
-    def _payload_row(payload: Payload) -> list[str | float]:
+    def payload_row(payload: Payload) -> list[str | float]:
         inertia = payload.inertia
         return [
             ", ".join(str(i) for i in payload.indices),

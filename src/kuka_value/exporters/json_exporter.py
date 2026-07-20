@@ -20,7 +20,18 @@ class JsonExporter(Exporter):
     """
 
     def export(self, robot: RobotInfo) -> bytes:
-        data: dict[str, Any] = {
+        data = self.robot_dict(robot)
+        return json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
+
+    @staticmethod
+    def robot_dict(robot: RobotInfo) -> dict[str, Any]:
+        """Build the full-fidelity dict representation of one robot.
+
+        Shared with BatchJsonExporter so a batch's JSON output is
+        exactly an array of what single-robot export() would produce
+        per item, plus batch-only fields.
+        """
+        return {
             "model": robot.model,
             "general": {
                 "backup_name": robot.general.backup_name,
@@ -30,10 +41,9 @@ class JsonExporter(Exporter):
                 "controller_type": robot.controller.controller_type.value,
                 "serial_number": robot.controller.serial_number,
             },
-            "payloads": [self._payload_dict(p) for p in robot.payloads],
-            "warnings": [self._warning_dict(w) for w in robot.warnings],
+            "payloads": [JsonExporter._payload_dict(p) for p in robot.payloads],
+            "warnings": [JsonExporter._warning_dict(w) for w in robot.warnings],
         }
-        return json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
 
     @staticmethod
     def _vector_dict(vector: Vector3D | None) -> dict[str, float] | None:

@@ -195,3 +195,71 @@ class TestResourceCleanup:
             engine.parse(zip_path)
 
         assert len(close_calls) >= 1
+
+
+class TestBatchAnalysis:
+    """Test Engine.parse_many(): batch analysis with per-item isolation."""
+
+    def test_all_succeed(self, temp_dir: Path, engine: Engine) -> None:
+        backup1 = temp_dir / "Robot1"
+        backup1.mkdir()
+        (backup1 / "$machine.dat").write_text('$TRAFONAME[]="KR240R2900"\n')
+
+        backup2 = temp_dir / "Robot2"
+        backup2.mkdir()
+        (backup2 / "$machine.dat").write_text('$TRAFONAME[]="KR6R900"\n')
+
+        results = list(engine.parse_many([backup1, backup2]))
+
+        assert len(results) == 2
+        assert all(r.succeeded for r in results)
+        assert results[0].robot is not None
+        assert results[0].robot.model == "KR 240 R2900"
+        assert results[1].robot is not None
+        assert results[1].robot.model == "KR 6 R900"
+
+    def test_isolates_failures(self, temp_dir: Path, engine: Engine) -> None:
+        good_backup = temp_dir / "GoodRobot"
+        good_backup.mkdir()
+        (good_backup / "$machine.dat").write_text('$TRAFONAME[]="KR240R2900"\n')
+
+        missing_backup = temp_dir / "does_not_exist"
+
+        results = list(engine.parse_many([good_backup, missing_backup]))
+
+        assert len(results) == 2
+        assert results[0].succeeded is True
+        assert results[1].succeeded is False
+        assert results[1].error is not None
+        assert results[1].robot is None
+
+    def test_preserves_order(self, temp_dir: Path, engine: Engine) -> None:
+        paths = []
+        for i in range(3):
+            backup = temp_dir / f"Robot{i}"
+            backup.mkdir()
+            (backup / "$machine.dat").write_text(f'$TRAFONAME[]="KR{i}R900"\n')
+            paths.append(backup)
+
+        results = list(engine.parse_many(paths))
+
+        assert [r.source_path for r in results] == paths
+
+    def test_empty_input_yields_nothing(self, engine: Engine) -> None:
+        results = list(engine.parse_many([]))
+        assert results == []
+
+    def test_returns_iterator(self, engine: Engine) -> None:
+        from collections.abc import Iterator
+
+        assert isinstance(engine.parse_many([]), Iterator)
+
+    def test_invalid_zip_is_isolated_not_raised(self, temp_dir: Path, engine: Engine) -> None:
+        bad_zip = temp_dir / "bad.zip"
+        bad_zip.write_text("not a zip file")
+
+        results = list(engine.parse_many([bad_zip]))
+
+        assert len(results) == 1
+        assert results[0].succeeded is False
+        assert results[0].display_name == "bad"

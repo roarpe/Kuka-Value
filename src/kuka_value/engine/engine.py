@@ -9,10 +9,12 @@ file I/O directly. It only ever calls:
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 from kuka_value.analyzers.payload_analyzer import PayloadAnalyzer
 from kuka_value.analyzers.robot_analyzer import RobotAnalyzer
+from kuka_value.models.batch_result import BatchItemResult
 from kuka_value.models.controller_info import ControllerInfo, ControllerType
 from kuka_value.models.general_info import GeneralInfo
 from kuka_value.models.robot_info import RobotInfo
@@ -46,6 +48,29 @@ class Engine:
             return self._analyze(reader, path)
         finally:
             reader.close()
+
+    def parse_many(self, paths: Iterable[Path]) -> Iterator[BatchItemResult]:
+        """Analyze multiple backups, isolating per-item failures.
+
+        Unlike parse(), a single corrupt or missing backup does not
+        abort the batch: it is reported as a failed BatchItemResult
+        and processing continues with the next path. Results are
+        yielded as they complete, so callers can report progress
+        without waiting for the whole batch to finish.
+
+        Args:
+            paths: Backups to analyze, each a .zip file or a folder
+
+        Returns:
+            One BatchItemResult per path, in the same order
+        """
+        for path in paths:
+            try:
+                robot = self.parse(path)
+            except Exception as exc:
+                yield BatchItemResult(source_path=path, robot=None, error=str(exc))
+            else:
+                yield BatchItemResult(source_path=path, robot=robot, error=None)
 
     def _analyze(self, reader: BackupReader, source_path: Path) -> RobotInfo:
         warnings = WarningLog()
