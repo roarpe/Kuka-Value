@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from kuka_value.analyzers._common import read_file_safe
+from kuka_value.analyzers.robot_info_xml import find_robot_info_xml
 from kuka_value.models.warnings import WarningLog
 from kuka_value.parser.backup_reader import BackupReader, FileInfo
 from kuka_value.parser.krl_parser import KrlValue, parse_assignments
@@ -28,6 +29,7 @@ _ROBCOR_VARS = frozenset({"$ROBCOR_NAME", "$ROBCOR_TYPE"})
 class ModelSource(Enum):
     """Where the robot model was identified from."""
 
+    ROBOT_INFO_XML = "ROBOT_INFO_XML"
     TRAFONAME = "TRAFONAME"
     MACHINE_DAT = "MACHINE_DAT"
     ROBCOR = "ROBCOR"
@@ -47,10 +49,12 @@ class RobotAnalyzer:
     """Detects robot model from backup files.
 
     Detection strategy, in priority order:
-        1. $TRAFONAME in a MACHINE.DAT-like file
-        2. $ROBOT_TYPE / $ROBOT_MODEL in a MACHINE.DAT-like file
-        3. $ROBCOR_NAME / $ROBCOR_TYPE in a ROBCOR-like file
-        4. Broad search across all files (last resort)
+        1. <RobotType> in RobotInfo.xml (most reliable: a single plain
+           value, not a KRL array that may have several slots)
+        2. $TRAFONAME in a MACHINE.DAT-like file
+        3. $ROBOT_TYPE / $ROBOT_MODEL in a MACHINE.DAT-like file
+        4. $ROBCOR_NAME / $ROBCOR_TYPE in a ROBCOR-like file
+        5. Broad search across all files (last resort)
 
     Never raises for missing or malformed data: records a warning and
     returns ModelSource.UNKNOWN instead.
@@ -66,6 +70,12 @@ class RobotAnalyzer:
         Returns:
             Detected model with source and raw value
         """
+        xml_data = find_robot_info_xml(reader)
+        if xml_data is not None and xml_data.robot_type:
+            raw = xml_data.robot_type.lstrip("#").strip()
+            if raw:
+                return self._build_result(raw, ModelSource.ROBOT_INFO_XML)
+
         files = reader.list_files()
 
         strategies: list[tuple[str, frozenset[str], ModelSource]] = [

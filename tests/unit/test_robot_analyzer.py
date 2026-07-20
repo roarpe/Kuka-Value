@@ -48,6 +48,59 @@ class TestNormalizeModelName:
         assert analyzer.normalize_model_name("  KR240R2900  ") == "KR 240 R2900"
 
 
+class TestRobotInfoXmlPriority:
+    """Test priority 0: RobotInfo.xml detection (highest priority)."""
+
+    def test_finds_robot_type_in_robot_info_xml(
+        self, temp_dir: Path, analyzer: RobotAnalyzer, warnings: WarningLog
+    ) -> None:
+        (temp_dir / "RobotInfo.xml").write_text(
+            "<Root><RobotType>#KR240R2900 ULTRA C4 FLR</RobotType></Root>"
+        )
+
+        reader = BackupReader(temp_dir)
+        result = analyzer.analyze(reader, warnings)
+
+        assert result.source == ModelSource.ROBOT_INFO_XML
+        assert result.model == "KR240R2900 ULTRA C4 FLR"
+        assert len(warnings) == 0
+
+    def test_strips_leading_hash(
+        self, temp_dir: Path, analyzer: RobotAnalyzer, warnings: WarningLog
+    ) -> None:
+        (temp_dir / "RobotInfo.xml").write_text("<Root><RobotType>#KR6R900</RobotType></Root>")
+
+        reader = BackupReader(temp_dir)
+        result = analyzer.analyze(reader, warnings)
+
+        assert result.raw_value == "KR6R900"
+        assert result.model == "KR 6 R900"
+
+    def test_takes_priority_over_trafoname(
+        self, temp_dir: Path, analyzer: RobotAnalyzer, warnings: WarningLog
+    ) -> None:
+        (temp_dir / "RobotInfo.xml").write_text("<Root><RobotType>#KR6R900</RobotType></Root>")
+        (temp_dir / "$machine.dat").write_text('$TRAFONAME[]="KR240R2900"\n')
+
+        reader = BackupReader(temp_dir)
+        result = analyzer.analyze(reader, warnings)
+
+        assert result.source == ModelSource.ROBOT_INFO_XML
+        assert result.model == "KR 6 R900"
+
+    def test_falls_back_to_trafoname_when_robot_type_missing(
+        self, temp_dir: Path, analyzer: RobotAnalyzer, warnings: WarningLog
+    ) -> None:
+        (temp_dir / "RobotInfo.xml").write_text("<Root><SerialNumber>12345</SerialNumber></Root>")
+        (temp_dir / "$machine.dat").write_text('$TRAFONAME[]="KR240R2900"\n')
+
+        reader = BackupReader(temp_dir)
+        result = analyzer.analyze(reader, warnings)
+
+        assert result.source == ModelSource.TRAFONAME
+        assert result.model == "KR 240 R2900"
+
+
 class TestTrafonamePriority:
     """Test priority 1: TRAFONAME detection."""
 

@@ -100,6 +100,26 @@ class TestFullPipeline:
         assert robot.controller.controller_type == ControllerType.UNKNOWN
         assert robot.controller.serial_number is None
 
+    def test_parse_uses_robot_info_xml_for_model_and_serial(
+        self, temp_dir: Path, engine: Engine
+    ) -> None:
+        backup = temp_dir / "backup"
+        backup.mkdir()
+        # RobotInfo.xml at its real-world nested location; TRAFONAME
+        # present too, to prove RobotInfo.xml wins (higher priority).
+        rdc_dir = backup / "C" / "KRC" / "Roboter" / "Rdc"
+        rdc_dir.mkdir(parents=True)
+        (rdc_dir / "RobotInfo.xml").write_text(
+            "<Root><RobotType>#KR240R2900 ULTRA C4 FLR</RobotType>"
+            "<SerialNumber>626925</SerialNumber></Root>"
+        )
+        (backup / "$machine.dat").write_text('$TRAFONAME[]="KR6R900"\n')
+
+        robot = engine.parse(backup)
+
+        assert robot.model == "KR240R2900 ULTRA C4 FLR"
+        assert robot.controller.serial_number == "626925"
+
 
 class TestBackupNaming:
     """Test how backup_name is derived from the input path."""
