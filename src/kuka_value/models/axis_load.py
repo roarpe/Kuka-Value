@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from kuka_value.models.payload import Vector3D
+from kuka_value.models.payload import Orientation, Vector3D
 
 
 @dataclass(frozen=True)
@@ -22,6 +22,7 @@ class AxisLoad:
     mass: float
     center_of_gravity: Vector3D
     inertia: Vector3D | None = None
+    orientation: Orientation | None = None
     source_file: str | None = None
 
     def is_empty(self) -> bool:

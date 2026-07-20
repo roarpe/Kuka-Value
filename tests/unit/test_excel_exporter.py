@@ -64,7 +64,7 @@ class TestExcelExport:
         assert first[0] == "1, 3"
         assert first[1] == 10.5
         assert first[2] == 100.0
-        assert first[5] == 0.5  # inertia X
+        assert first[8] == 0.5  # inertia X
 
     def test_payloads_sheet_missing_inertia_is_none(self, sample_robot_info: RobotInfo) -> None:
         result = ExcelExporter().export(sample_robot_info)
@@ -74,9 +74,9 @@ class TestExcelExport:
         rows = list(sheet.iter_rows(min_row=2, values_only=True))
         second = rows[1]
         assert second[1] == 25.0
-        assert second[5] is None
-        assert second[6] is None
-        assert second[7] is None
+        assert second[8] is None
+        assert second[9] is None
+        assert second[10] is None
 
     def test_header_cells_are_bold(self, sample_robot_info: RobotInfo) -> None:
         result = ExcelExporter().export(sample_robot_info)
@@ -149,7 +149,7 @@ class TestAxisLoadsSheet:
         sheet = workbook["Axis Loads"]
 
         rows = list(sheet.iter_rows(min_row=2, values_only=True))
-        assert rows[0] == (3, 12.5, 50.0, 0.0, 0.0, 0.1, 0.2, 0.3, "$config.dat")
+        assert rows[0] == (3, 12.5, 50.0, 0.0, 0.0, None, None, None, 0.1, 0.2, 0.3, "$config.dat")
 
     def test_missing_inertia_is_none(self) -> None:
         robot = RobotInfo(
@@ -166,9 +166,9 @@ class TestAxisLoadsSheet:
         sheet = workbook["Axis Loads"]
 
         rows = list(sheet.iter_rows(min_row=2, values_only=True))
-        assert rows[0][5] is None
-        assert rows[0][6] is None
-        assert rows[0][7] is None
+        assert rows[0][8] is None
+        assert rows[0][9] is None
+        assert rows[0][10] is None
 
     def test_header_is_bold(self) -> None:
         robot = RobotInfo(

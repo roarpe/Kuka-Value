@@ -2,7 +2,7 @@
 
 from PySide6.QtCore import QModelIndex, Qt
 
-from kuka_value.models.payload import Payload, Vector3D
+from kuka_value.models.payload import Orientation, Payload, Vector3D
 from kuka_value.ui.payload_table_model import PayloadTableModel
 
 
@@ -12,6 +12,7 @@ def _payloads() -> list[Payload]:
             mass=10.5,
             center_of_gravity=Vector3D(x=100.0, y=0.0, z=50.0),
             inertia=Vector3D(x=0.5, y=0.5, z=0.3),
+            orientation=Orientation(a=90.0, b=-3.5, c=-34.7),
             indices=[1, 3],
             source_file="$config.dat",
         ),
@@ -19,6 +20,7 @@ def _payloads() -> list[Payload]:
             mass=25.0,
             center_of_gravity=Vector3D(x=0.0, y=0.0, z=0.0),
             inertia=None,
+            orientation=None,
             indices=[2],
             source_file=None,
         ),
@@ -37,7 +39,7 @@ class TestRowsAndColumns:
 
     def test_column_count(self, qapp: object) -> None:
         model = PayloadTableModel()
-        assert model.columnCount() == 9
+        assert model.columnCount() == 12
 
     def test_row_count_with_invalid_parent_index_is_zero(self, qapp: object) -> None:
         model = PayloadTableModel()
@@ -94,29 +96,43 @@ class TestCellData:
         assert model.data(model.index(0, 3)) == 0.0
         assert model.data(model.index(0, 4)) == 50.0
 
-    def test_data_inertia_columns(self, qapp: object) -> None:
+    def test_data_orientation_columns(self, qapp: object) -> None:
         model = PayloadTableModel()
         model.set_payloads(_payloads())
-        assert model.data(model.index(0, 5)) == 0.5
-        assert model.data(model.index(0, 6)) == 0.5
-        assert model.data(model.index(0, 7)) == 0.3
+        assert model.data(model.index(0, 5)) == 90.0
+        assert model.data(model.index(0, 6)) == -3.5
+        assert model.data(model.index(0, 7)) == -34.7
 
-    def test_data_missing_inertia_is_blank(self, qapp: object) -> None:
+    def test_data_missing_orientation_is_blank(self, qapp: object) -> None:
         model = PayloadTableModel()
         model.set_payloads(_payloads())
         assert model.data(model.index(1, 5)) == ""
         assert model.data(model.index(1, 6)) == ""
         assert model.data(model.index(1, 7)) == ""
 
+    def test_data_inertia_columns(self, qapp: object) -> None:
+        model = PayloadTableModel()
+        model.set_payloads(_payloads())
+        assert model.data(model.index(0, 8)) == 0.5
+        assert model.data(model.index(0, 9)) == 0.5
+        assert model.data(model.index(0, 10)) == 0.3
+
+    def test_data_missing_inertia_is_blank(self, qapp: object) -> None:
+        model = PayloadTableModel()
+        model.set_payloads(_payloads())
+        assert model.data(model.index(1, 8)) == ""
+        assert model.data(model.index(1, 9)) == ""
+        assert model.data(model.index(1, 10)) == ""
+
     def test_data_source_file_column(self, qapp: object) -> None:
         model = PayloadTableModel()
         model.set_payloads(_payloads())
-        assert model.data(model.index(0, 8)) == "$config.dat"
+        assert model.data(model.index(0, 11)) == "$config.dat"
 
     def test_data_missing_source_file_is_blank(self, qapp: object) -> None:
         model = PayloadTableModel()
         model.set_payloads(_payloads())
-        assert model.data(model.index(1, 8)) == ""
+        assert model.data(model.index(1, 11)) == ""
 
 
 class TestPayloadAt:

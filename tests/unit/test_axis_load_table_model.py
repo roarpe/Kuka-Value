@@ -3,7 +3,7 @@
 from PySide6.QtCore import QModelIndex, Qt
 
 from kuka_value.models.axis_load import AxisLoad
-from kuka_value.models.payload import Vector3D
+from kuka_value.models.payload import Orientation, Vector3D
 from kuka_value.ui.axis_load_table_model import AxisLoadTableModel
 
 
@@ -14,6 +14,7 @@ def _axis_loads() -> list[AxisLoad]:
             mass=12.5,
             center_of_gravity=Vector3D(x=50.0, y=0.0, z=0.0),
             inertia=Vector3D(x=0.1, y=0.2, z=0.3),
+            orientation=Orientation(a=10.0, b=20.0, c=30.0),
             source_file="$config.dat",
         ),
         AxisLoad(
@@ -21,6 +22,7 @@ def _axis_loads() -> list[AxisLoad]:
             mass=8.0,
             center_of_gravity=Vector3D(x=0.0, y=0.0, z=0.0),
             inertia=None,
+            orientation=None,
             source_file=None,
         ),
     ]
@@ -38,7 +40,7 @@ class TestRowsAndColumns:
 
     def test_column_count(self, qapp: object) -> None:
         model = AxisLoadTableModel()
-        assert model.columnCount() == 9
+        assert model.columnCount() == 12
 
     def test_row_count_with_invalid_parent_index_is_zero(self, qapp: object) -> None:
         model = AxisLoadTableModel()
@@ -101,29 +103,43 @@ class TestCellData:
         assert model.data(model.index(0, 3)) == 0.0
         assert model.data(model.index(0, 4)) == 0.0
 
-    def test_data_inertia_columns(self, qapp: object) -> None:
+    def test_data_orientation_columns(self, qapp: object) -> None:
         model = AxisLoadTableModel()
         model.set_axis_loads(_axis_loads())
-        assert model.data(model.index(0, 5)) == 0.1
-        assert model.data(model.index(0, 6)) == 0.2
-        assert model.data(model.index(0, 7)) == 0.3
+        assert model.data(model.index(0, 5)) == 10.0
+        assert model.data(model.index(0, 6)) == 20.0
+        assert model.data(model.index(0, 7)) == 30.0
 
-    def test_data_missing_inertia_is_blank(self, qapp: object) -> None:
+    def test_data_missing_orientation_is_blank(self, qapp: object) -> None:
         model = AxisLoadTableModel()
         model.set_axis_loads(_axis_loads())
         assert model.data(model.index(1, 5)) == ""
         assert model.data(model.index(1, 6)) == ""
         assert model.data(model.index(1, 7)) == ""
 
+    def test_data_inertia_columns(self, qapp: object) -> None:
+        model = AxisLoadTableModel()
+        model.set_axis_loads(_axis_loads())
+        assert model.data(model.index(0, 8)) == 0.1
+        assert model.data(model.index(0, 9)) == 0.2
+        assert model.data(model.index(0, 10)) == 0.3
+
+    def test_data_missing_inertia_is_blank(self, qapp: object) -> None:
+        model = AxisLoadTableModel()
+        model.set_axis_loads(_axis_loads())
+        assert model.data(model.index(1, 8)) == ""
+        assert model.data(model.index(1, 9)) == ""
+        assert model.data(model.index(1, 10)) == ""
+
     def test_data_source_file_column(self, qapp: object) -> None:
         model = AxisLoadTableModel()
         model.set_axis_loads(_axis_loads())
-        assert model.data(model.index(0, 8)) == "$config.dat"
+        assert model.data(model.index(0, 11)) == "$config.dat"
 
     def test_data_missing_source_file_is_blank(self, qapp: object) -> None:
         model = AxisLoadTableModel()
         model.set_axis_loads(_axis_loads())
-        assert model.data(model.index(1, 8)) == ""
+        assert model.data(model.index(1, 11)) == ""
 
 
 class TestAxisLoadAt:
