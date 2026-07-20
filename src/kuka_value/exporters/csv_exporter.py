@@ -6,6 +6,7 @@ import csv
 import io
 
 from kuka_value.exporters.base import Exporter
+from kuka_value.models.axis_load import AxisLoad
 from kuka_value.models.payload import Payload
 from kuka_value.models.robot_info import RobotInfo
 
@@ -21,13 +22,25 @@ PAYLOAD_HEADERS = [
     "Source File",
 ]
 
+AXIS_LOAD_HEADERS = [
+    "Axis",
+    "Mass (kg)",
+    "CoG X (mm)",
+    "CoG Y (mm)",
+    "CoG Z (mm)",
+    "Inertia X (kgm2)",
+    "Inertia Y (kgm2)",
+    "Inertia Z (kgm2)",
+    "Source File",
+]
+
 
 class CsvExporter(Exporter):
     """Exports a robot analysis result as CSV.
 
     Layout: a short metadata block (model, backup name, controller,
-    warning count), a blank separator line, then the unique-payload
-    table.
+    warning count), a blank separator line, the unique-payload table,
+    another blank separator, then the axis-loads table (if any).
     """
 
     def export(self, robot: RobotInfo) -> bytes:
@@ -45,6 +58,11 @@ class CsvExporter(Exporter):
         writer.writerow(PAYLOAD_HEADERS)
         for payload in robot.payloads:
             writer.writerow(self.payload_row(payload))
+        writer.writerow([])
+
+        writer.writerow(AXIS_LOAD_HEADERS)
+        for axis_load in robot.axis_loads:
+            writer.writerow(self.axis_load_row(axis_load))
 
         # utf-8-sig: BOM so Excel opens non-ASCII content correctly
         return buffer.getvalue().encode("utf-8-sig")
@@ -62,4 +80,19 @@ class CsvExporter(Exporter):
             inertia.y if inertia else "",
             inertia.z if inertia else "",
             payload.source_file or "",
+        ]
+
+    @staticmethod
+    def axis_load_row(axis_load: AxisLoad) -> list[str | float | int]:
+        inertia = axis_load.inertia
+        return [
+            axis_load.axis,
+            axis_load.mass,
+            axis_load.center_of_gravity.x,
+            axis_load.center_of_gravity.y,
+            axis_load.center_of_gravity.z,
+            inertia.x if inertia else "",
+            inertia.y if inertia else "",
+            inertia.z if inertia else "",
+            axis_load.source_file or "",
         ]

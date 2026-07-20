@@ -5,8 +5,10 @@ import io
 from pathlib import Path
 
 from kuka_value.exporters.csv_exporter import CsvExporter
+from kuka_value.models.axis_load import AxisLoad
 from kuka_value.models.controller_info import ControllerInfo, ControllerType
 from kuka_value.models.general_info import GeneralInfo
+from kuka_value.models.payload import Vector3D
 from kuka_value.models.robot_info import RobotInfo
 from kuka_value.models.warnings import WarningLog
 
@@ -16,9 +18,20 @@ def _rows(content_bytes: bytes) -> list[list[str]]:
     return list(csv.reader(io.StringIO(text)))
 
 
+def _section_rows(rows: list[list[str]], header_first_cell: str) -> list[list[str]]:
+    """Rows belonging to a table section, bounded by its header row and
+    the next blank separator line (or end of file)."""
+    header_idx = next(i for i, r in enumerate(rows) if r and r[0] == header_first_cell)
+    end_idx = next((i for i in range(header_idx + 1, len(rows)) if not rows[i]), len(rows))
+    return rows[header_idx + 1 : end_idx]
+
+
 def _payload_rows(rows: list[list[str]]) -> list[list[str]]:
-    header_idx = next(i for i, r in enumerate(rows) if r and r[0] == "Index(es)")
-    return rows[header_idx + 1 :]
+    return _section_rows(rows, "Index(es)")
+
+
+def _axis_load_rows(rows: list[list[str]]) -> list[list[str]]:
+    return _section_rows(rows, "Axis")
 
 
 class TestCsvExport:
@@ -88,6 +101,53 @@ class TestCsvExport:
     def test_export_warning_count(self, sample_robot_info: RobotInfo) -> None:
         rows = _rows(CsvExporter().export(sample_robot_info))
         assert ["Warnings", "1"] in rows
+
+    def test_export_no_axis_loads_still_valid(self, sample_robot_info: RobotInfo) -> None:
+        rows = _rows(CsvExporter().export(sample_robot_info))
+        assert _axis_load_rows(rows) == []
+
+    def test_export_axis_load_values(self) -> None:
+        robot = RobotInfo(
+            model="KR 240 R2900",
+            general=GeneralInfo(backup_name="Test"),
+            controller=ControllerInfo(controller_type=ControllerType.UNKNOWN),
+            axis_loads=[
+                AxisLoad(
+                    axis=3,
+                    mass=12.5,
+                    center_of_gravity=Vector3D(x=50.0, y=0.0, z=0.0),
+                    inertia=Vector3D(x=0.1, y=0.2, z=0.3),
+                    source_file="$config.dat",
+                ),
+                AxisLoad(
+                    axis=1,
+                    mass=8.0,
+                    center_of_gravity=Vector3D(x=0.0, y=0.0, z=0.0),
+                    inertia=None,
+                    source_file=None,
+                ),
+            ],
+            warnings=WarningLog(),
+        )
+
+        rows = _rows(CsvExporter().export(robot))
+        axis_rows = _axis_load_rows(rows)
+
+        assert len(axis_rows) == 2
+        assert axis_rows[0] == [
+            "3",
+            "12.5",
+            "50.0",
+            "0.0",
+            "0.0",
+            "0.1",
+            "0.2",
+            "0.3",
+            "$config.dat",
+        ]
+        assert axis_rows[1][0] == "1"
+        assert axis_rows[1][5] == ""  # missing inertia is blank
+        assert axis_rows[1][8] == ""  # missing source file is blank
 
 
 class TestExportToFile:

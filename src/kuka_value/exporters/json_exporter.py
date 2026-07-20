@@ -6,6 +6,7 @@ import json
 from typing import Any
 
 from kuka_value.exporters.base import Exporter
+from kuka_value.models.axis_load import AxisLoad
 from kuka_value.models.payload import Payload, Vector3D
 from kuka_value.models.robot_info import RobotInfo
 from kuka_value.models.warnings import AnalysisWarning
@@ -42,6 +43,7 @@ class JsonExporter(Exporter):
                 "serial_number": robot.controller.serial_number,
             },
             "payloads": [JsonExporter._payload_dict(p) for p in robot.payloads],
+            "axis_loads": [JsonExporter._axis_load_dict(a) for a in robot.axis_loads],
             "warnings": [JsonExporter._warning_dict(w) for w in robot.warnings],
         }
 
@@ -59,6 +61,16 @@ class JsonExporter(Exporter):
             "inertia": JsonExporter._vector_dict(payload.inertia),
             "indices": payload.indices,
             "source_file": payload.source_file,
+        }
+
+    @staticmethod
+    def _axis_load_dict(axis_load: AxisLoad) -> dict[str, Any]:
+        return {
+            "axis": axis_load.axis,
+            "mass": axis_load.mass,
+            "center_of_gravity": JsonExporter._vector_dict(axis_load.center_of_gravity),
+            "inertia": JsonExporter._vector_dict(axis_load.inertia),
+            "source_file": axis_load.source_file,
         }
 
     @staticmethod

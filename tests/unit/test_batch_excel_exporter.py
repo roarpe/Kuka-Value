@@ -6,7 +6,13 @@ from pathlib import Path
 from openpyxl import load_workbook
 
 from kuka_value.exporters.batch_excel_exporter import BatchExcelExporter
+from kuka_value.models.axis_load import AxisLoad
 from kuka_value.models.batch_result import BatchItemResult
+from kuka_value.models.controller_info import ControllerInfo, ControllerType
+from kuka_value.models.general_info import GeneralInfo
+from kuka_value.models.payload import Vector3D
+from kuka_value.models.robot_info import RobotInfo
+from kuka_value.models.warnings import WarningLog
 
 
 class TestBatchExcelExport:
@@ -15,10 +21,10 @@ class TestBatchExcelExport:
         assert isinstance(result, bytes)
         assert len(result) > 0
 
-    def test_creates_two_sheets(self, sample_batch_results: list[BatchItemResult]) -> None:
+    def test_creates_three_sheets(self, sample_batch_results: list[BatchItemResult]) -> None:
         result = BatchExcelExporter().export(sample_batch_results)
         workbook = load_workbook(io.BytesIO(result))
-        assert workbook.sheetnames == ["Summary", "Payloads"]
+        assert workbook.sheetnames == ["Summary", "Payloads", "Axis Loads"]
 
     def test_summary_has_one_row_per_backup(
         self, sample_batch_results: list[BatchItemResult]
@@ -36,7 +42,7 @@ class TestBatchExcelExport:
         sheet = workbook["Summary"]
 
         rows = list(sheet.iter_rows(min_row=2, values_only=True))
-        assert rows[0] == ("TestBackup", "KR 240 R2900", 2, 1, "OK")
+        assert rows[0] == ("TestBackup", "KR 240 R2900", 2, 0, 1, "OK")
 
     def test_summary_marks_failure(self, sample_batch_results: list[BatchItemResult]) -> None:
         result = BatchExcelExporter().export(sample_batch_results)
@@ -47,7 +53,7 @@ class TestBatchExcelExport:
         failed_row = rows[2]
         assert failed_row[0] == "BrokenBackup"
         assert failed_row[1] == "-"
-        assert "FAILED" in failed_row[4]
+        assert "FAILED" in failed_row[5]
 
     def test_summary_header_is_bold(self, sample_batch_results: list[BatchItemResult]) -> None:
         result = BatchExcelExporter().export(sample_batch_results)
@@ -77,6 +83,38 @@ class TestBatchExcelExport:
         second_backup_row = next(r for r in rows if r[0] == "SecondBackup")
         assert second_backup_row[1] == "KR 6 R900"
         assert second_backup_row[3] == 5.0
+
+    def test_axis_loads_sheet_empty_when_none_present(
+        self, sample_batch_results: list[BatchItemResult]
+    ) -> None:
+        result = BatchExcelExporter().export(sample_batch_results)
+        workbook = load_workbook(io.BytesIO(result))
+        sheet = workbook["Axis Loads"]
+
+        rows = list(sheet.iter_rows(min_row=2, values_only=True))
+        assert rows == []
+
+    def test_axis_loads_sheet_prefixed_with_backup_and_model(self) -> None:
+        robot = RobotInfo(
+            model="KR 240 R2900",
+            general=GeneralInfo(backup_name="WithAxisLoad"),
+            controller=ControllerInfo(controller_type=ControllerType.UNKNOWN),
+            axis_loads=[
+                AxisLoad(axis=3, mass=12.5, center_of_gravity=Vector3D(x=50.0, y=0.0, z=0.0))
+            ],
+            warnings=WarningLog(),
+        )
+        results = [BatchItemResult(source_path=Path("WithAxisLoad"), robot=robot, error=None)]
+
+        result = BatchExcelExporter().export(results)
+        workbook = load_workbook(io.BytesIO(result))
+        sheet = workbook["Axis Loads"]
+
+        rows = list(sheet.iter_rows(min_row=2, values_only=True))
+        assert rows[0][0] == "WithAxisLoad"
+        assert rows[0][1] == "KR 240 R2900"
+        assert rows[0][2] == 3  # axis number
+        assert rows[0][3] == 12.5  # mass
 
     def test_empty_results_produces_header_only(self) -> None:
         result = BatchExcelExporter().export([])

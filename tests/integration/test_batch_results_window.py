@@ -216,7 +216,7 @@ class TestExport:
 
         assert target.exists()
         workbook = load_workbook(target)
-        assert workbook.sheetnames == ["Summary", "Payloads"]
+        assert workbook.sheetnames == ["Summary", "Payloads", "Axis Loads"]
 
     def test_export_json_writes_expected_content(
         self,

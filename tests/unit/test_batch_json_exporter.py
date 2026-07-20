@@ -4,7 +4,13 @@ import json
 from pathlib import Path
 
 from kuka_value.exporters.batch_json_exporter import BatchJsonExporter
+from kuka_value.models.axis_load import AxisLoad
 from kuka_value.models.batch_result import BatchItemResult
+from kuka_value.models.controller_info import ControllerInfo, ControllerType
+from kuka_value.models.general_info import GeneralInfo
+from kuka_value.models.payload import Vector3D
+from kuka_value.models.robot_info import RobotInfo
+from kuka_value.models.warnings import WarningLog
 
 
 class TestBatchJsonExport:
@@ -41,6 +47,24 @@ class TestBatchJsonExport:
         assert failed["display_name"] == "BrokenBackup"
         assert "model" not in failed
         assert "payloads" not in failed
+
+    def test_successful_item_includes_axis_loads(self) -> None:
+        robot = RobotInfo(
+            model="KR 240 R2900",
+            general=GeneralInfo(backup_name="WithAxisLoad"),
+            controller=ControllerInfo(controller_type=ControllerType.UNKNOWN),
+            axis_loads=[
+                AxisLoad(axis=3, mass=12.5, center_of_gravity=Vector3D(x=50.0, y=0.0, z=0.0))
+            ],
+            warnings=WarningLog(),
+        )
+        results = [BatchItemResult(source_path=Path("WithAxisLoad"), robot=robot, error=None)]
+
+        data = json.loads(BatchJsonExporter().export(results))
+
+        assert len(data[0]["axis_loads"]) == 1
+        assert data[0]["axis_loads"][0]["axis"] == 3
+        assert data[0]["axis_loads"][0]["mass"] == 12.5
 
     def test_source_path_included_for_all_items(
         self, sample_batch_results: list[BatchItemResult]

@@ -3,8 +3,10 @@
 import json
 
 from kuka_value.exporters.json_exporter import JsonExporter
+from kuka_value.models.axis_load import AxisLoad
 from kuka_value.models.controller_info import ControllerInfo, ControllerType
 from kuka_value.models.general_info import GeneralInfo
+from kuka_value.models.payload import Vector3D
 from kuka_value.models.robot_info import RobotInfo
 from kuka_value.models.warnings import WarningLog
 
@@ -62,7 +64,47 @@ class TestJsonExport:
         data = json.loads(JsonExporter().export(robot))
 
         assert data["payloads"] == []
+        assert data["axis_loads"] == []
         assert data["warnings"] == []
+
+    def test_export_axis_load_full_fidelity(self) -> None:
+        robot = RobotInfo(
+            model="KR 240 R2900",
+            general=GeneralInfo(backup_name="Test"),
+            controller=ControllerInfo(controller_type=ControllerType.UNKNOWN),
+            axis_loads=[
+                AxisLoad(
+                    axis=3,
+                    mass=12.5,
+                    center_of_gravity=Vector3D(x=50.0, y=0.0, z=0.0),
+                    inertia=Vector3D(x=0.1, y=0.2, z=0.3),
+                    source_file="$config.dat",
+                )
+            ],
+            warnings=WarningLog(),
+        )
+        data = json.loads(JsonExporter().export(robot))
+
+        first = data["axis_loads"][0]
+        assert first["axis"] == 3
+        assert first["mass"] == 12.5
+        assert first["center_of_gravity"] == {"x": 50.0, "y": 0.0, "z": 0.0}
+        assert first["inertia"] == {"x": 0.1, "y": 0.2, "z": 0.3}
+        assert first["source_file"] == "$config.dat"
+
+    def test_export_axis_load_without_inertia_is_null(self) -> None:
+        robot = RobotInfo(
+            model="KR 240 R2900",
+            general=GeneralInfo(backup_name="Test"),
+            controller=ControllerInfo(controller_type=ControllerType.UNKNOWN),
+            axis_loads=[
+                AxisLoad(axis=1, mass=5.0, center_of_gravity=Vector3D(x=0.0, y=0.0, z=0.0))
+            ],
+            warnings=WarningLog(),
+        )
+        data = json.loads(JsonExporter().export(robot))
+
+        assert data["axis_loads"][0]["inertia"] is None
 
     def test_export_null_optional_fields(self) -> None:
         robot = RobotInfo(

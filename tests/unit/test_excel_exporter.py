@@ -6,8 +6,10 @@ from pathlib import Path
 from openpyxl import load_workbook
 
 from kuka_value.exporters.excel_exporter import ExcelExporter
+from kuka_value.models.axis_load import AxisLoad
 from kuka_value.models.controller_info import ControllerInfo, ControllerType
 from kuka_value.models.general_info import GeneralInfo
+from kuka_value.models.payload import Vector3D
 from kuka_value.models.robot_info import RobotInfo
 from kuka_value.models.warnings import WarningLog
 
@@ -20,11 +22,11 @@ class TestExcelExport:
         assert isinstance(result, bytes)
         assert len(result) > 0
 
-    def test_export_creates_two_sheets(self, sample_robot_info: RobotInfo) -> None:
+    def test_export_creates_three_sheets(self, sample_robot_info: RobotInfo) -> None:
         result = ExcelExporter().export(sample_robot_info)
         workbook = load_workbook(io.BytesIO(result))
 
-        assert workbook.sheetnames == ["Summary", "Payloads"]
+        assert workbook.sheetnames == ["Summary", "Payloads", "Axis Loads"]
 
     def test_summary_sheet_contains_metadata(self, sample_robot_info: RobotInfo) -> None:
         result = ExcelExporter().export(sample_robot_info)
@@ -38,6 +40,7 @@ class TestExcelExport:
         assert values["Controller Type"] == "KRC4"
         assert values["Serial Number"] == "12345"
         assert values["Unique Payloads"] == 2
+        assert values["Axis Loads"] == 0
         assert values["Warnings"] == 1
 
     def test_payloads_sheet_header_row(self, sample_robot_info: RobotInfo) -> None:
@@ -96,6 +99,89 @@ class TestExcelExport:
 
         rows = list(sheet.iter_rows(min_row=2, values_only=True))
         assert rows == []
+
+
+class TestAxisLoadsSheet:
+    def test_no_axis_loads_produces_header_only(self, sample_robot_info: RobotInfo) -> None:
+        result = ExcelExporter().export(sample_robot_info)
+        workbook = load_workbook(io.BytesIO(result))
+        sheet = workbook["Axis Loads"]
+
+        rows = list(sheet.iter_rows(min_row=2, values_only=True))
+        assert rows == []
+
+    def test_header_row(self) -> None:
+        robot = RobotInfo(
+            model="KR 240 R2900",
+            general=GeneralInfo(backup_name="Test"),
+            controller=ControllerInfo(controller_type=ControllerType.UNKNOWN),
+            axis_loads=[
+                AxisLoad(axis=3, mass=12.5, center_of_gravity=Vector3D(x=0.0, y=0.0, z=0.0))
+            ],
+            warnings=WarningLog(),
+        )
+        result = ExcelExporter().export(robot)
+        workbook = load_workbook(io.BytesIO(result))
+        sheet = workbook["Axis Loads"]
+
+        header = [cell.value for cell in sheet[1]]
+        assert header[0] == "Axis"
+        assert header[1] == "Mass (kg)"
+
+    def test_data_row_values(self) -> None:
+        robot = RobotInfo(
+            model="KR 240 R2900",
+            general=GeneralInfo(backup_name="Test"),
+            controller=ControllerInfo(controller_type=ControllerType.UNKNOWN),
+            axis_loads=[
+                AxisLoad(
+                    axis=3,
+                    mass=12.5,
+                    center_of_gravity=Vector3D(x=50.0, y=0.0, z=0.0),
+                    inertia=Vector3D(x=0.1, y=0.2, z=0.3),
+                    source_file="$config.dat",
+                )
+            ],
+            warnings=WarningLog(),
+        )
+        result = ExcelExporter().export(robot)
+        workbook = load_workbook(io.BytesIO(result))
+        sheet = workbook["Axis Loads"]
+
+        rows = list(sheet.iter_rows(min_row=2, values_only=True))
+        assert rows[0] == (3, 12.5, 50.0, 0.0, 0.0, 0.1, 0.2, 0.3, "$config.dat")
+
+    def test_missing_inertia_is_none(self) -> None:
+        robot = RobotInfo(
+            model="KR 240 R2900",
+            general=GeneralInfo(backup_name="Test"),
+            controller=ControllerInfo(controller_type=ControllerType.UNKNOWN),
+            axis_loads=[
+                AxisLoad(axis=1, mass=5.0, center_of_gravity=Vector3D(x=0.0, y=0.0, z=0.0))
+            ],
+            warnings=WarningLog(),
+        )
+        result = ExcelExporter().export(robot)
+        workbook = load_workbook(io.BytesIO(result))
+        sheet = workbook["Axis Loads"]
+
+        rows = list(sheet.iter_rows(min_row=2, values_only=True))
+        assert rows[0][5] is None
+        assert rows[0][6] is None
+        assert rows[0][7] is None
+
+    def test_header_is_bold(self) -> None:
+        robot = RobotInfo(
+            model="KR 240 R2900",
+            general=GeneralInfo(backup_name="Test"),
+            controller=ControllerInfo(controller_type=ControllerType.UNKNOWN),
+            warnings=WarningLog(),
+        )
+        result = ExcelExporter().export(robot)
+        workbook = load_workbook(io.BytesIO(result))
+        sheet = workbook["Axis Loads"]
+
+        assert sheet["A1"].font.bold is True
 
 
 class TestExportToFile:
