@@ -1,3 +1,5 @@
 """Parser module: Lexing, tokenizing, and parsing KRL structures."""
 
-__all__ = []
+from kuka_value.parser.backup_reader import BackupReader, FileIndex, FileInfo
+
+__all__ = ["BackupReader", "FileIndex", "FileInfo"]

@@ -137,7 +137,7 @@ addopts = """
     --strict-markers
     --tb=short
     --cov=kuka_value
-    --cov-report=term-out:skip-covered
+    --cov-report=term-missing
     --cov-report=html
     --cov-report=xml
     --cov-fail-under=90
