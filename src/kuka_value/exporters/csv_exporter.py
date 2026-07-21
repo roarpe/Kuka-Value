@@ -16,6 +16,9 @@ PAYLOAD_HEADERS = [
     "CoG X (mm)",
     "CoG Y (mm)",
     "CoG Z (mm)",
+    "Orientation A (deg)",
+    "Orientation B (deg)",
+    "Orientation C (deg)",
     "Inertia X (kgm2)",
     "Inertia Y (kgm2)",
     "Inertia Z (kgm2)",
@@ -28,6 +31,9 @@ AXIS_LOAD_HEADERS = [
     "CoG X (mm)",
     "CoG Y (mm)",
     "CoG Z (mm)",
+    "Orientation A (deg)",
+    "Orientation B (deg)",
+    "Orientation C (deg)",
     "Inertia X (kgm2)",
     "Inertia Y (kgm2)",
     "Inertia Z (kgm2)",
@@ -70,12 +76,16 @@ class CsvExporter(Exporter):
     @staticmethod
     def payload_row(payload: Payload) -> list[str | float]:
         inertia = payload.inertia
+        orientation = payload.orientation
         return [
             ", ".join(str(i) for i in payload.indices),
             payload.mass,
             payload.center_of_gravity.x,
             payload.center_of_gravity.y,
             payload.center_of_gravity.z,
+            orientation.a if orientation else "",
+            orientation.b if orientation else "",
+            orientation.c if orientation else "",
             inertia.x if inertia else "",
             inertia.y if inertia else "",
             inertia.z if inertia else "",
@@ -85,12 +95,16 @@ class CsvExporter(Exporter):
     @staticmethod
     def axis_load_row(axis_load: AxisLoad) -> list[str | float | int]:
         inertia = axis_load.inertia
+        orientation = axis_load.orientation
         return [
             axis_load.axis,
             axis_load.mass,
             axis_load.center_of_gravity.x,
             axis_load.center_of_gravity.y,
             axis_load.center_of_gravity.z,
+            orientation.a if orientation else "",
+            orientation.b if orientation else "",
+            orientation.c if orientation else "",
             inertia.x if inertia else "",
             inertia.y if inertia else "",
             inertia.z if inertia else "",

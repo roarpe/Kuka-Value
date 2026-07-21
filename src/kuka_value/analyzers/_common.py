@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from kuka_value.models.payload import Vector3D
+from kuka_value.models.payload import Orientation, Vector3D
 from kuka_value.parser.backup_reader import FileInfo
 from kuka_value.parser.krl_parser import KrlStruct
 
@@ -51,4 +51,27 @@ def extract_vector3d(struct: KrlStruct, field_name: str) -> Vector3D | None:
         x=sub.get_float("X") or 0.0,
         y=sub.get_float("Y") or 0.0,
         z=sub.get_float("Z") or 0.0,
+    )
+
+
+def extract_orientation(struct: KrlStruct, field_name: str) -> Orientation | None:
+    """Extract an A/B/C orientation sub-struct (e.g. CM) from a KRL struct.
+
+    Missing A/B/C components within a present sub-struct default to
+    0.0, mirroring extract_vector3d's handling of partial vectors.
+
+    Args:
+        struct: Parent struct (e.g. the LOAD_DATA/LOAD_A<n>_DATA value)
+        field_name: Sub-struct field name, e.g. "CM"
+
+    Returns:
+        The orientation, or None if `field_name` is absent
+    """
+    sub = struct.get_struct(field_name)
+    if sub is None:
+        return None
+    return Orientation(
+        a=sub.get_float("A") or 0.0,
+        b=sub.get_float("B") or 0.0,
+        c=sub.get_float("C") or 0.0,
     )

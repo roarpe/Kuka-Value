@@ -21,6 +21,22 @@ class Vector3D:
         return self.x == 0.0 and self.y == 0.0 and self.z == 0.0
 
 
+@dataclass(frozen=True)
+class Orientation:
+    """A/B/C orientation angles (degrees) of the useful center of gravity."""
+
+    a: float
+    b: float
+    c: float
+
+    @classmethod
+    def zero(cls) -> Orientation:
+        return cls(a=0.0, b=0.0, c=0.0)
+
+    def is_zero(self) -> bool:
+        return self.a == 0.0 and self.b == 0.0 and self.c == 0.0
+
+
 @dataclass
 class Payload:
     """Extracted payload data from LOAD_DATA."""
@@ -28,6 +44,7 @@ class Payload:
     mass: float
     center_of_gravity: Vector3D
     inertia: Vector3D | None = None
+    orientation: Orientation | None = None
     indices: list[int] = field(default_factory=list)
     source_file: str | None = None
 
@@ -40,6 +57,7 @@ class Payload:
             self.mass == other.mass
             and self.center_of_gravity == other.center_of_gravity
             and self.inertia == other.inertia
+            and self.orientation == other.orientation
         )
 
     def merge_indices(self, other: Payload) -> Payload:
@@ -48,6 +66,7 @@ class Payload:
             mass=self.mass,
             center_of_gravity=self.center_of_gravity,
             inertia=self.inertia,
+            orientation=self.orientation,
             indices=self.indices + other.indices,
             source_file=self.source_file,
         )

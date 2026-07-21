@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from kuka_value.analyzers.payload_analyzer import PayloadAnalyzer
-from kuka_value.models.payload import Vector3D
+from kuka_value.models.payload import Orientation, Vector3D
 from kuka_value.models.warnings import WarningLog
 from kuka_value.parser.backup_reader import BackupReader
 
@@ -48,6 +48,23 @@ class TestExtraction:
         assert p.center_of_gravity == Vector3D(x=100.0, y=0.0, z=50.0)
         assert p.inertia == Vector3D(x=0.5, y=0.5, z=0.3)
         assert p.indices == [1]
+
+    def test_extracts_orientation_abc(
+        self, temp_dir: Path, analyzer: PayloadAnalyzer, warnings: WarningLog
+    ) -> None:
+        (temp_dir / "$config.dat").write_text(
+            "DECL LOAD LOAD_DATA[32]\n"
+            "LOAD_DATA[1]={M 119.66156,CM {X -57.8045197,Y -124.918602,Z 243.621994,"
+            "A 90.630722,B -3.52672505,C -34.7216949},"
+            "J {X 5.25,Y 6.73409081,Z 7.085989}}\n"
+        )
+
+        reader = BackupReader(temp_dir)
+        payloads = analyzer.analyze(reader, warnings)
+
+        assert len(payloads) == 1
+        p = payloads[0]
+        assert p.orientation == Orientation(a=90.630722, b=-3.52672505, c=-34.7216949)
 
     def test_extracts_via_decl_form(
         self, temp_dir: Path, analyzer: PayloadAnalyzer, warnings: WarningLog

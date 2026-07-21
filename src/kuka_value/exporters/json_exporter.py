@@ -7,7 +7,7 @@ from typing import Any
 
 from kuka_value.exporters.base import Exporter
 from kuka_value.models.axis_load import AxisLoad
-from kuka_value.models.payload import Payload, Vector3D
+from kuka_value.models.payload import Orientation, Payload, Vector3D
 from kuka_value.models.robot_info import RobotInfo
 from kuka_value.models.warnings import AnalysisWarning
 
@@ -54,10 +54,17 @@ class JsonExporter(Exporter):
         return {"x": vector.x, "y": vector.y, "z": vector.z}
 
     @staticmethod
+    def _orientation_dict(orientation: Orientation | None) -> dict[str, float] | None:
+        if orientation is None:
+            return None
+        return {"a": orientation.a, "b": orientation.b, "c": orientation.c}
+
+    @staticmethod
     def _payload_dict(payload: Payload) -> dict[str, Any]:
         return {
             "mass": payload.mass,
             "center_of_gravity": JsonExporter._vector_dict(payload.center_of_gravity),
+            "orientation": JsonExporter._orientation_dict(payload.orientation),
             "inertia": JsonExporter._vector_dict(payload.inertia),
             "indices": payload.indices,
             "source_file": payload.source_file,
@@ -69,6 +76,7 @@ class JsonExporter(Exporter):
             "axis": axis_load.axis,
             "mass": axis_load.mass,
             "center_of_gravity": JsonExporter._vector_dict(axis_load.center_of_gravity),
+            "orientation": JsonExporter._orientation_dict(axis_load.orientation),
             "inertia": JsonExporter._vector_dict(axis_load.inertia),
             "source_file": axis_load.source_file,
         }

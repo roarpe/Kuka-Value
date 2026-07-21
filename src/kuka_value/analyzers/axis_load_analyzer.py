@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from kuka_value.analyzers._common import extract_vector3d, read_file_safe
+from kuka_value.analyzers._common import extract_orientation, extract_vector3d, read_file_safe
 from kuka_value.models.axis_load import AxisLoad
 from kuka_value.models.payload import Vector3D
 from kuka_value.models.warnings import WarningLog
@@ -95,12 +95,14 @@ class AxisLoadAnalyzer:
 
         cog = AxisLoadAnalyzer._extract_center_of_gravity(axis, struct, warnings)
         inertia = extract_vector3d(struct, "J")
+        orientation = extract_orientation(struct, "CM")
 
         return AxisLoad(
             axis=axis,
             mass=mass,
             center_of_gravity=cog,
             inertia=inertia,
+            orientation=orientation,
             source_file=str(file_info.path),
         )
 

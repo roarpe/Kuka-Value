@@ -67,7 +67,7 @@ class TestCsvExport:
         assert first[0] == "1, 3"  # merged indices
         assert first[1] == "10.5"  # mass
         assert first[2] == "100.0"  # CoG X
-        assert first[5] == "0.5"  # inertia X
+        assert first[8] == "0.5"  # inertia X
 
     def test_export_missing_inertia_is_blank(self, sample_robot_info: RobotInfo) -> None:
         rows = _rows(CsvExporter().export(sample_robot_info))
@@ -75,15 +75,15 @@ class TestCsvExport:
 
         second = payload_rows[1]
         assert second[1] == "25.0"
-        assert second[5] == ""  # inertia X blank
-        assert second[6] == ""  # inertia Y blank
-        assert second[7] == ""  # inertia Z blank
+        assert second[8] == ""  # inertia X blank
+        assert second[9] == ""  # inertia Y blank
+        assert second[10] == ""  # inertia Z blank
 
     def test_export_source_file_included(self, sample_robot_info: RobotInfo) -> None:
         rows = _rows(CsvExporter().export(sample_robot_info))
         payload_rows = _payload_rows(rows)
 
-        assert payload_rows[0][8] == "$config.dat"
+        assert payload_rows[0][11] == "$config.dat"
 
     def test_export_empty_payloads_still_valid(self) -> None:
         robot = RobotInfo(
@@ -140,14 +140,17 @@ class TestCsvExport:
             "50.0",
             "0.0",
             "0.0",
+            "",
+            "",
+            "",
             "0.1",
             "0.2",
             "0.3",
             "$config.dat",
         ]
         assert axis_rows[1][0] == "1"
-        assert axis_rows[1][5] == ""  # missing inertia is blank
-        assert axis_rows[1][8] == ""  # missing source file is blank
+        assert axis_rows[1][8] == ""  # missing inertia is blank
+        assert axis_rows[1][11] == ""  # missing source file is blank
 
 
 class TestExportToFile:

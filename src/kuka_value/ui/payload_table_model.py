@@ -14,6 +14,9 @@ _HEADERS = [
     "CoG X (mm)",
     "CoG Y (mm)",
     "CoG Z (mm)",
+    "Orientation A (deg)",
+    "Orientation B (deg)",
+    "Orientation C (deg)",
     "Inertia X (kgm2)",
     "Inertia Y (kgm2)",
     "Inertia Z (kgm2)",
@@ -82,15 +85,19 @@ class PayloadTableModel(QAbstractTableModel):
     @staticmethod
     def _column_value(payload: Payload, column: int) -> Any:
         inertia = payload.inertia
+        orientation = payload.orientation
         columns: dict[int, Any] = {
             0: ", ".join(str(i) for i in payload.indices),
             1: payload.mass,
             2: payload.center_of_gravity.x,
             3: payload.center_of_gravity.y,
             4: payload.center_of_gravity.z,
-            5: inertia.x if inertia else "",
-            6: inertia.y if inertia else "",
-            7: inertia.z if inertia else "",
-            8: payload.source_file or "",
+            5: orientation.a if orientation else "",
+            6: orientation.b if orientation else "",
+            7: orientation.c if orientation else "",
+            8: inertia.x if inertia else "",
+            9: inertia.y if inertia else "",
+            10: inertia.z if inertia else "",
+            11: payload.source_file or "",
         }
         return columns.get(column)

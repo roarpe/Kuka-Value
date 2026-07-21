@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from kuka_value.analyzers._common import extract_vector3d, read_file_safe
+from kuka_value.analyzers._common import extract_orientation, extract_vector3d, read_file_safe
 from kuka_value.models.payload import Payload, Vector3D
 from kuka_value.models.warnings import WarningLog
 from kuka_value.parser.backup_reader import BackupReader, FileInfo
@@ -81,11 +81,13 @@ class PayloadAnalyzer:
 
         cog = PayloadAnalyzer._extract_center_of_gravity(struct, warnings)
         inertia = PayloadAnalyzer._extract_inertia(struct)
+        orientation = extract_orientation(struct, "CM")
 
         return Payload(
             mass=mass,
             center_of_gravity=cog,
             inertia=inertia,
+            orientation=orientation,
             indices=[assignment.index],
             source_file=str(file_info.path),
         )
